@@ -1,6 +1,6 @@
 'use client';
 
-import React, { memo, useMemo } from 'react';
+import React, { memo, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -11,6 +11,7 @@ interface NavItem {
   icon: React.ReactNode;
   activeIcon?: React.ReactNode;
   isSpecial?: boolean; // For the prominent "Jual" button
+  badge?: number;
 }
 
 const navItems: NavItem[] = [
@@ -24,7 +25,8 @@ const navItems: NavItem[] = [
     ),
     activeIcon: (
       <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-        <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+        <path d="M11.47 3.84a.75.75 0 01.06 1.06L9.07 7.24a.75.75 0 11-1.12-1.0l1.47-1.64-.53-.56a.75.75 0 011.06-1.06l.53.56zm1.06 0a.75.75 0 01.53.22l.53.56a.75.75 0 11-1.06 1.06l-.53-.56-1.47 1.64a.75.75 0 11-1.12 1.0L11.47 4.9a.75.75 0 01.06-1.06zm0 0" />
+        <path fillRule="evenodd" d="M8.5 6.5c-.6 0-1 .4-1 1v8c0 .6.4 1 1 1h7c.6 0 1-.4 1-1v-8c0-.6-.4-1-1-1h-7zm0-1.5A2.5 2.5 0 006 7.5v8A2.5 2.5 0 008.5 18h7a2.5 2.5 0 002.5-2.5v-8A2.5 2.5 0 0015.5 5h-7z" clipRule="evenodd" />
       </svg>
     ),
   },
@@ -38,7 +40,7 @@ const navItems: NavItem[] = [
     ),
     activeIcon: (
       <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-        <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+        <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
       </svg>
     ),
   },
@@ -46,9 +48,11 @@ const navItems: NavItem[] = [
     href: '/lapak/buat',
     label: 'Jual',
     icon: (
-      <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-      </svg>
+      <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
+        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+        </svg>
+      </div>
     ),
     isSpecial: true,
   },
@@ -76,7 +80,7 @@ const navItems: NavItem[] = [
     ),
     activeIcon: (
       <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-        <path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clipRule="evenodd" />
+        <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
       </svg>
     ),
   },
@@ -130,33 +134,119 @@ NavItem.displayName = 'NavItem';
 // Memoized bottom nav bar component
 export const BottomNavBar = memo(() => {
   const pathname = usePathname();
+  const [isJualMenuOpen, setIsJualMenuOpen] = useState(false);
 
-  // Memoize the isActive function to prevent recreation on every render
-  const isActive = useMemo(() => {
-    return (href: string) => {
-      if (href === '/') {
-        return pathname === '/';
-      }
-      return pathname.startsWith(href);
-    };
-  }, [pathname]);
+  const toggleJualMenu = () => {
+    setIsJualMenuOpen(!isJualMenuOpen);
+  };
 
-  // Memoize nav items with their active states
-  const navItemsWithActiveState = useMemo(() => {
-    return navItems.map(item => ({
-      item,
-      isActive: isActive(item.href)
-    }));
-  }, [isActive]);
+  const closeJualMenu = () => {
+    setIsJualMenuOpen(false);
+  };
+
+  const isActive = (href: string) => {
+    if (href === '/') {
+      return pathname === '/';
+    }
+    return pathname.startsWith(href);
+  };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border backdrop-blur-sm">
-      <div className="flex items-center justify-around py-2u px-1u">
-        {navItemsWithActiveState.map(({ item, isActive }) => (
-          <NavItem key={item.href} item={item} isActive={isActive} />
-        ))}
+    <>
+      {/* Special overlay menu for "Jual" button */}
+      <div 
+        className={`
+          fixed inset-0 bg-black/50 z-40
+          ${isJualMenuOpen ? 'block' : 'hidden'}
+        `}
+        onClick={closeJualMenu}
+      >
+        <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 z-50">
+          <div className="bg-surface rounded-card shadow-xl border border-border p-4u min-w-48">
+            <div className="space-y-2u">
+              <Link href="/lapak/buat" onClick={closeJualMenu}>
+                <button className="w-full flex items-center gap-3u p-3u rounded-button hover:bg-surface-secondary transition-colors">
+                  <div className="w-8 h-8 bg-primary/10 rounded-button flex items-center justify-center">
+                    <span className="text-lg">🏪</span>
+                  </div>
+                  <div className="text-left">
+                    <p className="text-body-small font-medium text-text-primary">Buka Lapak</p>
+                    <p className="text-caption text-text-secondary">Jual produk segar</p>
+                  </div>
+                </button>
+              </Link>
+              
+              <Link href="/borongan/buat" onClick={closeJualMenu}>
+                <button className="w-full flex items-center gap-3u p-3u rounded-button hover:bg-surface-secondary transition-colors">
+                  <div className="w-8 h-8 bg-accent/10 rounded-button flex items-center justify-center">
+                    <span className="text-lg">🤝</span>
+                  </div>
+                  <div className="text-left">
+                    <p className="text-body-small font-medium text-text-primary">Buat Borongan</p>
+                    <p className="text-caption text-text-secondary">Ajak belanja bareng</p>
+                  </div>
+                </button>
+              </Link>
+            </div>
+          </div>
+        </div>
       </div>
-    </nav>
+      
+      <nav className="fixed bottom-0 left-0 right-0 bg-surface border-t border-border z-30">
+        <div className="grid grid-cols-5 h-16">
+          {navItems.map((item) => {
+            const active = isActive(item.href);
+            
+            // Special handling for "Jual" button
+            if (item.label === 'Jual') {
+              return (
+                <button
+                  key={item.label}
+                  onClick={toggleJualMenu}
+                  className="flex flex-col items-center justify-center p-2u transition-all duration-200 hover:bg-surface-secondary"
+                >
+                  {isJualMenuOpen ? item.activeIcon : item.icon}
+                  <span className="text-xs font-medium text-primary mt-1u">
+                    {item.label}
+                  </span>
+                </button>
+              );
+            }
+
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                onClick={closeJualMenu}
+                className={`
+                  flex flex-col items-center justify-center p-2u
+                  transition-all duration-200 hover:bg-surface-secondary
+                  ${active ? 'text-primary' : 'text-text-secondary'}
+                `}
+              >
+                <div className="relative">
+                  {active ? item.activeIcon : item.icon}
+                  {item.badge && item.badge > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-error text-white text-xs rounded-full flex items-center justify-center">
+                      {item.badge > 9 ? '9+' : item.badge}
+                    </span>
+                  )}
+                </div>
+                <span className={`
+                  text-xs font-medium mt-1u
+                  ${active ? 'text-primary' : 'text-text-secondary'}
+                `}>
+                  {item.label}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+        
+        {/* Safe area for devices with home indicator */}
+        <div className="h-safe-area-inset-bottom bg-surface" />
+      </nav>
+    </>
   );
 });
 

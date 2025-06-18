@@ -10,62 +10,176 @@ import { useState, useEffect } from 'react'
 import { getNearbyLapak } from '@/lib/lapakService'
 import { Lapak } from '@/lib/types'
 
-// Authentication buttons component
-function AuthButtons() {
-  const { isAuthenticated, user, logoutAction, isHydrated } = useAuthStore();
+// Enhanced Header with Profile Access
+function ModernHeader() {
+  const { isAuthenticated, user, isHydrated } = useAuthStore();
+  const [showNotifications, setShowNotifications] = useState(false);
 
-  useEffect(() => {
-    console.log('AuthButtons state:', { isAuthenticated, hasUser: !!user, isHydrated });
-  }, [isAuthenticated, user, isHydrated]);
-
-  // Don't show anything until hydrated to prevent hydration mismatch
   if (!isHydrated) {
     return (
-      <div className="flex items-center gap-2u">
-        <div className="w-16 h-8 bg-border animate-pulse rounded-button"></div>
-        <div className="w-16 h-8 bg-border animate-pulse rounded-button"></div>
-      </div>
-    );
-  }
-
-  if (isAuthenticated && user) {
-    return (
-      <div className="flex items-center gap-2u">
-        <span className="text-caption text-text-secondary">
-          Halo, {user.full_name}
-        </span>
-        <Link href="/profile">
-          <button className="btn-ghost text-caption px-2u py-1">
-            Profil
-          </button>
-        </Link>
-        <button 
-          onClick={logoutAction}
-          className="btn-secondary text-caption px-2u py-1"
-        >
-          Keluar
-        </button>
-      </div>
+      <header className="bg-gradient-to-r from-primary to-primary-dark text-white">
+        <div className="page-padding py-4u">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="h-6 w-32 bg-white/20 animate-pulse rounded"></div>
+              <div className="h-4 w-24 bg-white/20 animate-pulse rounded mt-1u"></div>
+            </div>
+            <div className="h-8 w-20 bg-white/20 animate-pulse rounded-button"></div>
+          </div>
+        </div>
+      </header>
     );
   }
 
   return (
-    <div className="flex items-center gap-2u">
-      <Link href="/login">
-        <button className="btn-ghost text-caption px-2u py-1">
-          Masuk
-        </button>
-      </Link>
-      <Link href="/register">
-        <button className="btn-primary text-caption px-2u py-1">
-          Daftar
-        </button>
-      </Link>
-    </div>
+    <header className="bg-gradient-to-r from-primary to-primary-dark text-white">
+      <div className="page-padding py-4u">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-heading-2 font-bold">
+              Warung Warga
+            </h1>
+            <p className="text-caption opacity-90">
+              {isAuthenticated && user ? `Halo, ${user.full_name?.split(' ')[0]}!` : 'Belanja lokal, hemat bareng'}
+            </p>
+          </div>
+          
+          {isAuthenticated && user ? (
+            <div className="flex items-center gap-3u">
+              {/* Notification Button */}
+              <button 
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-2u hover:bg-white/10 rounded-full transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-3.5-3.5a50 50 0 00-.1-3.8C16.3 6.2 14 4 11.5 4S6.7 6.2 6.6 9.7c0 1.3 0 2.6-.1 3.8L3 17h5m7 0v1a3 3 0 11-6 0v-1m7 0H9" />
+                </svg>
+                <span className="absolute -top-1 -right-1 w-3 h-3 bg-accent rounded-full flex items-center justify-center">
+                  <span className="text-[10px] font-bold">3</span>
+                </span>
+              </button>
+              
+              {/* Profile Button */}
+              <Link href="/profile">
+                <div className="flex items-center gap-2u p-1u hover:bg-white/10 rounded-button transition-colors">
+                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                    <span className="text-caption font-bold">
+                      {user.full_name?.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </Link>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2u">
+              <Link href="/login">
+                <button className="btn-ghost text-white border-white/30 hover:bg-white/10 text-caption px-3u py-2u">
+                  Masuk
+                </button>
+              </Link>
+            </div>
+          )}
+        </div>
+        
+        {/* Search Bar */}
+        <div className="mt-4u">
+          <div className="relative">
+            <input 
+              type="text" 
+              placeholder="Cari produk atau lapak..."
+              className="w-full bg-white/10 border border-white/20 rounded-button px-4u py-3u text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/30"
+            />
+            <button className="absolute right-3u top-1/2 -translate-y-1/2">
+              <svg className="w-5 h-5 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
   );
 }
 
-// Nearby Lapak Section Component
+// Enhanced Quick Actions
+function QuickActionsSection() {
+  const { isAuthenticated } = useAuthStore();
+
+  return (
+    <section className="page-padding py-4u">
+      <h2 className="text-heading-2 text-text-primary mb-3u">Apa yang ingin Anda lakukan?</h2>
+      
+      <div className="grid grid-cols-2 gap-3u mb-4u">
+        {/* Jelajahi Lapak */}
+        <Link href="/lapak">
+          <div className="card p-4u text-center hover:shadow-lg hover:scale-[1.02] transition-all duration-200 border-2 border-transparent hover:border-primary/20">
+            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3u">
+              <span className="text-2xl">🏪</span>
+            </div>
+            <h3 className="text-body-large font-medium text-text-primary mb-1u">
+              Jelajahi Lapak
+            </h3>
+            <p className="text-caption text-text-secondary">
+              Produk segar dari tetangga
+            </p>
+          </div>
+        </Link>
+
+        {/* Borongan Bareng */}
+        <Link href="/borongan">
+          <div className="card p-4u text-center hover:shadow-lg hover:scale-[1.02] transition-all duration-200 border-2 border-transparent hover:border-accent/20">
+            <div className="w-12 h-12 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-3u">
+              <span className="text-2xl">🤝</span>
+            </div>
+            <h3 className="text-body-large font-medium text-text-primary mb-1u">
+              Borongan Bareng
+            </h3>
+            <p className="text-caption text-text-secondary">
+              Belanja bareng, hemat bareng
+            </p>
+          </div>
+        </Link>
+      </div>
+
+      {/* Additional Quick Actions */}
+      {isAuthenticated && (
+        <div className="grid grid-cols-3 gap-2u">
+          <Link href="/lapak/buat">
+            <div className="card p-3u text-center hover:shadow-md transition-all duration-200">
+              <div className="w-8 h-8 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-2u">
+                <span className="text-lg">➕</span>
+              </div>
+              <p className="text-caption font-medium text-text-primary">Buka Lapak</p>
+            </div>
+          </Link>
+          
+          <Link href="/borongan/buat">
+            <div className="card p-3u text-center hover:shadow-md transition-all duration-200">
+              <div className="w-8 h-8 bg-warning/10 rounded-full flex items-center justify-center mx-auto mb-2u">
+                <span className="text-lg">📋</span>
+              </div>
+              <p className="text-caption font-medium text-text-primary">Buat Borongan</p>
+            </div>
+          </Link>
+          
+          <Link href="/profile">
+            <div className="card p-3u text-center hover:shadow-md transition-all duration-200">
+              <div className="w-8 h-8 bg-info/10 rounded-full flex items-center justify-center mx-auto mb-2u">
+                <span className="text-lg">👤</span>
+              </div>
+              <p className="text-caption font-medium text-text-primary">Profil Saya</p>
+            </div>
+          </Link>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// Compact Nearby Lapak Section
 function NearbyLapakSection() {
   const [lapakList, setLapakList] = useState<Lapak[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -77,7 +191,7 @@ function NearbyLapakSection() {
   // Get user location
   const requestLocation = async () => {
     if (!navigator.geolocation) {
-      setError('Geolocation tidak didukung oleh browser ini');
+      setError('Geolocation tidak didukung');
       setIsLoading(false);
       return;
     }
@@ -90,18 +204,16 @@ function NearbyLapakSection() {
         const { latitude, longitude } = position.coords;
         setUserLocation({ latitude, longitude });
         setLocationPermission('granted');
-        console.log('Location obtained:', { latitude, longitude });
       },
       (error) => {
-        console.error('Geolocation error:', error);
         setLocationPermission('denied');
-        setError('Tidak dapat mengakses lokasi. Izinkan akses lokasi untuk melihat lapak terdekat.');
+        setError('Izinkan akses lokasi untuk melihat lapak terdekat');
         setIsLoading(false);
       },
       {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 300000 // 5 minutes cache
+        enableHighAccuracy: false,
+        timeout: 5000,
+        maximumAge: 300000
       }
     );
   };
@@ -116,37 +228,32 @@ function NearbyLapakSection() {
       const response = await getNearbyLapak({
         latitude,
         longitude,
-        radius: 10, // 10km radius
-        limit: 12 // Show 12 lapak on homepage
+        radius: 5,
+        limit: 4
       });
       
-      // Check if we got mock data (in development mode)
       if (response.lapak.length > 0 && response.lapak[0].id?.startsWith('mock-')) {
         setUsingMockData(true);
       }
       
       setLapakList(response.lapak || []);
     } catch (err: any) {
-      console.error('Failed to fetch nearby lapak:', err);
-      setError(err.message || 'Gagal memuat lapak terdekat');
+      setError('Gagal memuat lapak terdekat');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Effect to get location on component mount
   useEffect(() => {
     requestLocation();
   }, []);
 
-  // Effect to fetch lapak when location is available
   useEffect(() => {
     if (userLocation) {
       fetchNearbyLapak(userLocation.latitude, userLocation.longitude);
     }
   }, [userLocation]);
 
-  // Retry function
   const handleRetry = () => {
     if (userLocation) {
       fetchNearbyLapak(userLocation.latitude, userLocation.longitude);
@@ -158,248 +265,318 @@ function NearbyLapakSection() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="mb-5u">
-        <div className="flex items-center justify-between mb-4u">
-          <h3 className="text-heading-1">Lapak Terdekat</h3>
-          <div className="h-4 w-24 bg-border animate-pulse rounded"></div>
+      <section className="page-padding mb-6u">
+        <div className="flex items-center justify-between mb-3u">
+          <h3 className="text-heading-2">Lapak Terdekat</h3>
+          <div className="h-4 w-16 bg-border animate-pulse rounded"></div>
         </div>
-        <SkeletonGrid count={6} />
-      </div>
+        <div className="grid grid-cols-2 gap-3u">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="bg-surface rounded-card h-40 animate-pulse"></div>
+          ))}
+        </div>
+      </section>
     );
   }
 
   // Location permission denied
-  if (locationPermission === 'denied' || (error && error.includes('lokasi'))) {
+  if (locationPermission === 'denied') {
     return (
-      <div className="mb-5u">
-        <h3 className="text-heading-1 mb-4u">Lapak Terdekat</h3>
-        <LocationRequired onEnableLocation={requestLocation} />
-      </div>
+      <section className="page-padding mb-6u">
+        <h3 className="text-heading-2 mb-3u">Lapak Terdekat</h3>
+        <div className="card p-4u text-center bg-gradient-to-br from-warning/5 to-warning/10">
+          <div className="w-12 h-12 bg-warning/20 rounded-full flex items-center justify-center mx-auto mb-3u">
+            <svg className="w-6 h-6 text-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </div>
+          <h4 className="text-body-large font-medium mb-2u">Izinkan Akses Lokasi</h4>
+          <p className="text-body-small text-text-secondary mb-3u">
+            Untuk melihat lapak terdekat, kami perlu mengakses lokasi Anda
+          </p>
+          <button onClick={requestLocation} className="btn-primary text-caption">
+            Izinkan Lokasi
+          </button>
+        </div>
+      </section>
     );
   }
 
-  // Error state (but not location related)
+  // Error state
   if (error && !error.includes('lokasi')) {
     return (
-      <div className="mb-5u">
-        <h3 className="text-heading-1 mb-4u">Lapak Terdekat</h3>
-        <ErrorState onRetry={handleRetry} message={error} />
-      </div>
+      <section className="page-padding mb-6u">
+        <h3 className="text-heading-2 mb-3u">Lapak Terdekat</h3>
+        <div className="card p-4u text-center">
+          <p className="text-body-small text-error mb-3u">{error}</p>
+          <button onClick={handleRetry} className="btn-secondary text-caption">
+            Coba Lagi
+          </button>
+        </div>
+      </section>
     );
   }
 
   // No data state
-  if (lapakList.length === 0 && !usingMockData) {
+  if (lapakList.length === 0) {
     return (
-      <div className="mb-5u">
-        <h3 className="text-heading-1 mb-4u">Lapak Terdekat</h3>
-        <NoLapakFound 
-          onCreateNew={() => {
-            // Navigate to create lapak page
-            window.location.href = '/lapak/buat';
-          }} 
-        />
-      </div>
+      <section className="page-padding mb-6u">
+        <h3 className="text-heading-2 mb-3u">Lapak Terdekat</h3>
+        <div className="card p-4u text-center bg-gradient-to-br from-surface-secondary/30 to-surface-secondary/10">
+          <div className="w-12 h-12 bg-surface-secondary rounded-full flex items-center justify-center mx-auto mb-3u">
+            <svg className="w-6 h-6 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+          </div>
+          <h4 className="text-body-large font-medium mb-2u">Belum Ada Lapak</h4>
+          <p className="text-body-small text-text-secondary mb-3u">
+            Belum ada lapak di area Anda
+          </p>
+          <Link href="/lapak/buat">
+            <button className="btn-primary text-caption">
+              Buka Lapak Pertama
+            </button>
+          </Link>
+        </div>
+      </section>
     );
   }
 
   // Success state with data
   return (
-    <div className="mb-5u">
+    <section className="page-padding mb-6u">
       {/* Development Mode Notice */}
       {usingMockData && process.env.NODE_ENV === 'development' && (
-        <div className="mb-4u p-3u bg-accent/10 border border-accent/20 rounded-card">
+        <div className="mb-3u p-3u bg-accent/10 border border-accent/20 rounded-card">
           <div className="flex items-center gap-2u">
             <span className="text-lg">🚧</span>
             <div>
-              <p className="text-body-small font-medium text-accent">Mode Pengembangan</p>
+              <p className="text-caption font-medium text-accent">Mode Demo</p>
               <p className="text-caption text-text-secondary">
-                Menampilkan data contoh karena backend API belum tersedia. Data ini hanya untuk demo.
+                Data contoh untuk keperluan demo
               </p>
             </div>
           </div>
         </div>
       )}
       
-      <div className="flex items-center justify-between mb-4u">
-        <h3 className="text-heading-1">Lapak Terdekat</h3>
+      <div className="flex items-center justify-between mb-3u">
+        <h3 className="text-heading-2">Lapak Terdekat</h3>
         <Link 
           href="/lapak" 
-          className="text-body-small text-primary hover:underline flex items-center gap-1u"
+          className="text-caption text-primary font-medium flex items-center gap-1u hover:gap-2u transition-all"
         >
-          Lihat Semua
+          Semua
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </Link>
       </div>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4u">
+      <div className="grid grid-cols-2 gap-3u">
         {lapakList.map((lapak) => (
-          <ListingCard key={lapak.id} lapak={lapak} />
+          <ListingCard key={lapak.id} lapak={lapak} className="compact hover:scale-[1.02] transition-transform" />
         ))}
       </div>
+    </section>
+  );
+}
+
+// Feature Highlights Section
+function FeatureHighlights() {
+  return (
+    <section className="page-padding py-6u bg-gradient-to-br from-surface-secondary/20 to-surface-secondary/5">
+      <h3 className="text-heading-2 text-text-primary mb-4u text-center">
+        Kenapa Pilih Warung Warga?
+      </h3>
       
-      {/* Show more button if there are more lapak */}
-      {lapakList.length >= 12 && (
-        <div className="text-center mt-4u">
-          <Link href="/lapak">
-            <button className="btn-secondary">
-              Lihat Lebih Banyak Lapak
-            </button>
-          </Link>
+      <div className="grid grid-cols-1 gap-4u">
+        <div className="card p-4u flex items-center gap-4u overflow-hidden relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-green-50 to-transparent opacity-50"></div>
+          <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-xl flex items-center justify-center flex-shrink-0 relative z-10 shadow-lg">
+            <span className="text-2xl">🌱</span>
+          </div>
+          <div className="relative z-10">
+            <h4 className="text-body-large font-semibold text-text-primary mb-1u">Produk Segar Lokal</h4>
+            <p className="text-caption text-text-secondary">Langsung dari tetangga, segar dan berkualitas setiap hari</p>
+          </div>
         </div>
-      )}
-    </div>
+        
+        <div className="card p-4u flex items-center gap-4u overflow-hidden relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-50 to-transparent opacity-50"></div>
+          <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center flex-shrink-0 relative z-10 shadow-lg">
+            <span className="text-2xl">💰</span>
+          </div>
+          <div className="relative z-10">
+            <h4 className="text-body-large font-semibold text-text-primary mb-1u">Harga Lebih Murah</h4>
+            <p className="text-caption text-text-secondary">Belanja bareng dapat harga grosir, hemat hingga 30%</p>
+          </div>
+        </div>
+        
+        <div className="card p-4u flex items-center gap-4u overflow-hidden relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-50 to-transparent opacity-50"></div>
+          <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0 relative z-10 shadow-lg">
+            <span className="text-2xl">🤝</span>
+          </div>
+          <div className="relative z-10">
+            <h4 className="text-body-large font-semibold text-text-primary mb-1u">Komunitas Solid</h4>
+            <p className="text-caption text-text-secondary">Membangun ekonomi tetangga bersama-sama</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// New Community Success Stories Section
+function CommunitySection() {
+  const successStories = [
+    {
+      id: 1,
+      name: "Ibu Sari",
+      avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b1d2?w=60&h=60&fit=crop&crop=face",
+      story: "Berkat Warung Warga, saya bisa jual hasil kebun dan dapat tambahan penghasilan.",
+      achievement: "Penjualan +150%",
+      bg: "from-green-100 to-green-50"
+    },
+    {
+      id: 2,
+      name: "Pak Ahmad",
+      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=60&h=60&fit=crop&crop=face",
+      story: "Dengan borongan beras, kami hemat 25% dari harga supermarket.",
+      achievement: "Hemat 25%",
+      bg: "from-blue-100 to-blue-50"
+    },
+    {
+      id: 3,
+      name: "Maya Dewi",
+      avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=60&h=60&fit=crop&crop=face",
+      story: "Bergabung komunitas ini membuat belanja jadi lebih mudah dan murah.",
+      achievement: "Member Aktif",
+      bg: "from-purple-100 to-purple-50"
+    }
+  ];
+
+  return (
+    <section className="page-padding py-6u">
+      <h3 className="text-heading-2 text-text-primary mb-4u text-center">
+        Cerita Sukses Komunitas
+      </h3>
+      
+      <div className="space-y-3u">
+        {successStories.map((story) => (
+          <div key={story.id} className={`card p-4u bg-gradient-to-r ${story.bg} border-l-4 border-primary`}>
+            <div className="flex items-start gap-3u">
+              <img 
+                src={story.avatar} 
+                alt={story.name}
+                className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm"
+              />
+              <div className="flex-1">
+                <div className="flex justify-between items-start mb-2u">
+                  <h4 className="text-body-large font-semibold text-text-primary">{story.name}</h4>
+                  <span className="text-caption bg-white/80 px-2u py-1u rounded-full font-medium text-primary">
+                    {story.achievement}
+                  </span>
+                </div>
+                <p className="text-body-small text-text-secondary italic">&ldquo;{story.story}&rdquo;</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// New Statistics Section
+function StatsSection() {
+  const stats = [
+    { label: "Anggota Aktif", value: "2,847", icon: "👥" },
+    { label: "Produk Terjual", value: "15,632", icon: "📦" },
+    { label: "Total Hemat", value: "Rp 45M", icon: "💰" },
+    { label: "Lapak Aktif", value: "156", icon: "🏪" }
+  ];
+
+  return (
+    <section className="page-padding py-6u bg-gradient-to-br from-primary/5 to-accent/5">
+      <h3 className="text-heading-2 text-text-primary mb-4u text-center">
+        Warung Warga dalam Angka
+      </h3>
+      
+      <div className="grid grid-cols-2 gap-3u">
+        {stats.map((stat, index) => (
+          <div key={index} className="card p-4u text-center bg-white/80 backdrop-blur-sm">
+            <div className="text-2xl mb-2u">{stat.icon}</div>
+            <div className="text-heading-2 font-bold text-primary mb-1u">{stat.value}</div>
+            <div className="text-caption text-text-secondary">{stat.label}</div>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-surface shadow-card border-b border-border">
-        <div className="page-padding py-4u">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-heading-1 text-primary font-bold">
-                Warung Warga
-              </h1>
-              <p className="text-caption text-text-secondary">
-                Solusi Belanja Hyperlocal
-              </p>
-            </div>
-            <ClientOnly>
-              <AuthButtons />
-            </ClientOnly>
-          </div>
-        </div>
-      </header>
+      {/* Modern Header with Profile Access */}
+      <ClientOnly>
+        <ModernHeader />
+      </ClientOnly>
 
-      {/* Hero Section */}
-      <main className="page-padding py-5u">
-        <div className="text-center mb-5u">
-          <h2 className="text-display mb-2u">
-            Temukan Produk Lokal di{' '}
-            <span className="text-primary">Sekitar Anda</span>
-          </h2>
-          <p className="text-body-large text-text-secondary max-w-2xl mx-auto mb-4u">
-            Platform untuk membeli produk segar dari tetangga dan berpartisipasi 
-            dalam pembelian kolektif untuk mendapatkan harga yang lebih baik.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-2u justify-center">
-            <Link href="/lapak">
-              <button className="btn-primary">
-                Jelajahi Lapak Terdekat
-              </button>
-            </Link>
-            <Link href="/borongan">
-              <button className="btn-secondary">
-                Lihat Borongan Bareng
-              </button>
-            </Link>
-          </div>
-        </div>
+      {/* Quick Actions Section */}
+      <ClientOnly>
+        <QuickActionsSection />
+      </ClientOnly>
 
-        {/* Feature Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4u mb-5u">
-          {/* Lapak Warga Card */}
-          <Link href="/lapak">
-            <div className="card-listing">
-              <div className="p-4u">
-                <div className="flex items-center gap-2u mb-2u">
-                  <div className="w-8 h-8 bg-primary rounded-button flex items-center justify-center">
-                    <span className="text-white text-label">🏪</span>
-                  </div>
-                  <h3 className="text-heading-2">Lapak Warga</h3>
-                </div>
-                <p className="text-body-small text-text-secondary mb-3u">
-                  Beli produk segar langsung dari tetangga di sekitar Anda. 
-                  Temukan makanan, sayuran, dan kebutuhan sehari-hari dengan mudah.
-                </p>
-                <div className="flex items-center justify-between">
-                  <span className="text-caption text-accent">Tersedia 24/7</span>
-                  <span className="text-body-small text-primary">
-                    Lihat Semua →
-                  </span>
-                </div>
-              </div>
-            </div>
-          </Link>
+      {/* Nearby Lapak Section */}
+      <ClientOnly>
+        <NearbyLapakSection />
+      </ClientOnly>
 
-          {/* Borongan Bareng Card */}
-          <Link href="/borongan">
-            <div className="card-listing">
-              <div className="p-4u">
-                <div className="flex items-center gap-2u mb-2u">
-                  <div className="w-8 h-8 bg-accent rounded-button flex items-center justify-center">
-                    <span className="text-white text-label">🤝</span>
-                  </div>
-                  <h3 className="text-heading-2">Borongan Bareng</h3>
-                </div>
-                <p className="text-body-small text-text-secondary mb-3u">
-                  Gabung dengan tetangga untuk membeli dalam jumlah besar dan 
-                  dapatkan harga yang lebih murah untuk semua.
-                </p>
-                <div className="flex items-center justify-between">
-                  <span className="text-caption text-primary">Hemat hingga 30%</span>
-                  <span className="text-body-small text-primary">
-                    Gabung Sekarang →
-                  </span>
-                </div>
-              </div>
-            </div>
-          </Link>
-        </div>
+      {/* Feature Highlights */}
+      <FeatureHighlights />
 
-        {/* Nearby Lapak Section */}
-        <ClientOnly>
-          <NearbyLapakSection />
-        </ClientOnly>
+      {/* Statistics Section */}
+      <StatsSection />
 
-        {/* Quick Actions */}
-        <div className="card mb-5u">
-          <div className="p-4u">
-            <h3 className="text-heading-2 mb-3u">Mulai Berjualan</h3>
+      {/* Community Section */}
+      <CommunitySection />
+
+      {/* Call to Action for Non-Authenticated Users */}
+      <ClientOnly>
+        <div className="page-padding py-6u">
+          <div className="card p-6u text-center bg-gradient-to-br from-primary/10 to-accent/10 border border-primary/20">
+            <div className="text-4xl mb-3u">🎯</div>
+            <h3 className="text-heading-2 text-text-primary mb-2u">
+              Bergabung dengan Warung Warga
+            </h3>
             <p className="text-body-small text-text-secondary mb-4u">
-              Punya produk segar untuk dijual? Buka lapak Anda dan jangkau pembeli di sekitar.
+              Mulai belanja hemat dan jual produk segar ke tetangga sekitar
             </p>
-            <div className="flex flex-col sm:flex-row gap-2u">
-              <Link href="/lapak/buat">
-                <button className="btn-primary flex-1 sm:flex-none">
-                  🏪 Buka Lapak Baru
+            <div className="flex flex-col gap-2u">
+              <Link href="/register">
+                <button className="btn-primary w-full">
+                  📝 Daftar Sekarang - Gratis!
                 </button>
               </Link>
-              <Link href="/borongan/buat">
-                <button className="btn-secondary flex-1 sm:flex-none">
-                  🤝 Buat Borongan Bareng
+              <Link href="/login">
+                <button className="btn-secondary w-full">
+                  🔑 Masuk ke Akun
                 </button>
               </Link>
             </div>
+            <p className="text-caption text-text-secondary mt-3u">
+              Sudah 2,847+ tetangga yang bergabung!
+            </p>
           </div>
         </div>
-      </main>
+      </ClientOnly>
 
-      {/* Footer */}
-      <footer className="bg-surface border-t border-border mt-5u">
-        <div className="page-padding py-4u text-center">
-          <p className="text-caption text-text-secondary">
-            Warung Warga - Membangun komunitas melalui perdagangan lokal
-          </p>
-          <p className="text-caption text-text-secondary mt-1u">
-            Fase 2: Fitur Lapak Warga ✅ Complete
-          </p>
-          {/* Debug Link for Development */}
-          <div className="mt-2u">
-            <Link 
-              href="/debug-auth" 
-              className="text-caption text-primary hover:underline"
-            >
-              🔧 Debug Auth State
-            </Link>
-          </div>
-        </div>
-      </footer>
+      {/* Bottom Spacing for BottomNavBar */}
+      <div className="h-20"></div>
     </div>
   )
 } 
