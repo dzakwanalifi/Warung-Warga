@@ -1,45 +1,77 @@
+'use client';
+
 import React from 'react';
 import { cn } from '@/lib/utils';
 
 interface SkeletonCardProps {
+  showImage?: boolean;
+  showDescription?: boolean;
+  variant?: 'default' | 'compact' | 'wide';
   className?: string;
 }
 
-export const SkeletonCard: React.FC<SkeletonCardProps> = ({ className }) => {
+export const SkeletonCard: React.FC<SkeletonCardProps> = ({
+  showImage = true,
+  showDescription = true,
+  variant = 'default',
+  className = ''
+}) => {
+  const getSkeletonSize = () => {
+    switch (variant) {
+      case 'compact':
+        return 'h-32';
+      case 'wide':
+        return 'h-48';
+      default:
+        return 'h-40';
+    }
+  };
+
   return (
-    <div className={cn('card bg-surface overflow-hidden animate-pulse', className)}>
-      {/* Image Skeleton */}
-      <div className="h-48 bg-gray-200"></div>
+    <div className={`bg-surface rounded-lg shadow-card overflow-hidden animate-pulse ${className}`}>
+      {showImage && (
+        <div className={`bg-border ${getSkeletonSize()}`}></div>
+      )}
       
-      {/* Content Skeleton */}
-      <div className="p-3u">
-        {/* Title */}
-        <div className="h-5 bg-gray-200 rounded mb-2u"></div>
-        <div className="h-4 bg-gray-200 rounded w-3/4 mb-3u"></div>
-        
-        {/* Price */}
-        <div className="h-6 bg-gray-200 rounded w-1/2 mb-3u"></div>
-        
-        {/* Description */}
-        <div className="h-3 bg-gray-200 rounded mb-2u"></div>
-        <div className="h-3 bg-gray-200 rounded w-5/6 mb-3u"></div>
-        
-        {/* Seller Info */}
-        <div className="flex items-center gap-2u mb-3u">
-          <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
-          <div className="flex-1">
-            <div className="h-3 bg-gray-200 rounded w-2/3 mb-1u"></div>
-            <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-          </div>
+      <div className="p-4u space-y-3u">
+        {/* Title Skeleton */}
+        <div className="space-y-2u">
+          <div className="h-5 bg-border rounded w-3/4"></div>
+          {variant === 'wide' && (
+            <div className="h-4 bg-border rounded w-1/2"></div>
+          )}
         </div>
-        
-        {/* Footer */}
-        <div className="pt-2u border-t border-gray-100">
-          <div className="flex justify-between">
-            <div className="h-3 bg-gray-200 rounded w-1/4"></div>
-            <div className="h-3 bg-gray-200 rounded w-1/6"></div>
+
+        {/* Description Skeleton */}
+        {showDescription && (
+          <div className="space-y-2u">
+            <div className="h-3 bg-border rounded w-full"></div>
+            <div className="h-3 bg-border rounded w-5/6"></div>
+            {variant !== 'compact' && (
+              <div className="h-3 bg-border rounded w-2/3"></div>
+            )}
           </div>
+        )}
+
+        {/* Price/Meta Info Skeleton */}
+        <div className="flex justify-between items-center pt-2u">
+          <div className="space-y-1u">
+            <div className="h-5 bg-border rounded w-20"></div>
+            <div className="h-3 bg-border rounded w-16"></div>
+          </div>
+          <div className="h-8 bg-border rounded w-16"></div>
         </div>
+
+        {/* Progress Bar (for borongan cards) */}
+        {variant === 'wide' && (
+          <div className="pt-3u border-t border-border">
+            <div className="flex justify-between text-xs mb-2u">
+              <div className="h-3 bg-border rounded w-12"></div>
+              <div className="h-3 bg-border rounded w-16"></div>
+            </div>
+            <div className="h-2 bg-border rounded-full"></div>
+          </div>
+        )}
       </div>
     </div>
   );

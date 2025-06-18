@@ -16,6 +16,9 @@ export function formatCurrency(amount: number): string {
   }).format(amount)
 }
 
+// Alias for formatCurrency (for price formatting)
+export const formatPrice = formatCurrency;
+
 // Format angka dengan pemisah ribuan
 export function formatNumber(num: number): string {
   return new Intl.NumberFormat('id-ID').format(num)

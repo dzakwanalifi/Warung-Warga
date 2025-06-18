@@ -16,6 +16,7 @@ const config: Config = {
         // Background colors
         background: '#F8F9FA', // Off-white
         surface: '#FFFFFF', // Pure White
+        'surface-secondary': '#F1F3F4', // Light Gray Surface
         
         // Text colors
         'text-primary': '#212529', // Dark Gray
@@ -27,11 +28,14 @@ const config: Config = {
         // Status colors
         error: '#E53935', // Red
         success: '#43A047', // Green
+        warning: '#FB8C00', // Orange
+        info: '#1E88E5', // Blue
         
         // Hover states
         'primary-hover': '#218e81',
         'primary-light': 'rgba(38, 166, 154, 0.1)',
         'error-hover': '#c62828',
+        'success-hover': '#388e3c',
       },
       fontSize: {
         // Typography from UI/UX Guide
@@ -50,6 +54,8 @@ const config: Config = {
         '3u': '24px',  // 3 units
         '4u': '32px',  // 4 units
         '5u': '40px',  // 5 units
+        '6u': '48px',  // 6 units
+        '8u': '64px',  // 8 units
       },
       borderRadius: {
         // Border radius from UI/UX Guide

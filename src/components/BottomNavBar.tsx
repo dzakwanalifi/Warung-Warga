@@ -1,5 +1,6 @@
 'use client';
 
+import React, { memo, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -81,63 +82,82 @@ const navItems: NavItem[] = [
   },
 ];
 
-export const BottomNavBar: React.FC = () => {
+// Memoized nav item component to prevent unnecessary re-renders
+const NavItem = memo(({ item, isActive }: { item: NavItem; isActive: boolean }) => {
+  if (item.isSpecial) {
+    // Special prominent "Jual" button
+    return (
+      <Link key={item.href} href={item.href} prefetch={true}>
+        <div className="flex flex-col items-center space-y-1">
+          <div className={cn(
+            "w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200",
+            "bg-primary text-white shadow-lg hover:shadow-xl hover:scale-105",
+            "border-2 border-primary-hover transform-gpu" // Added transform-gpu for better animation performance
+          )}>
+            {item.icon}
+          </div>
+          <span className="text-caption font-medium text-primary">
+            {item.label}
+          </span>
+        </div>
+      </Link>
+    );
+  }
+
+  // Regular nav items
+  return (
+    <Link key={item.href} href={item.href} prefetch={true}>
+      <div className="flex flex-col items-center space-y-1u py-1u px-2u transition-all duration-200 hover:bg-surface-secondary rounded-button transform-gpu">
+        <div className={cn(
+          "transition-colors duration-200",
+          isActive ? "text-primary" : "text-text-secondary"
+        )}>
+          {isActive && item.activeIcon ? item.activeIcon : item.icon}
+        </div>
+        <span className={cn(
+          "text-caption font-medium transition-colors duration-200",
+          isActive ? "text-primary" : "text-text-secondary"
+        )}>
+          {item.label}
+        </span>
+      </div>
+    </Link>
+  );
+});
+
+NavItem.displayName = 'NavItem';
+
+// Memoized bottom nav bar component
+export const BottomNavBar = memo(() => {
   const pathname = usePathname();
 
-  const isActive = (href: string) => {
-    if (href === '/') {
-      return pathname === '/';
-    }
-    return pathname.startsWith(href);
-  };
+  // Memoize the isActive function to prevent recreation on every render
+  const isActive = useMemo(() => {
+    return (href: string) => {
+      if (href === '/') {
+        return pathname === '/';
+      }
+      return pathname.startsWith(href);
+    };
+  }, [pathname]);
+
+  // Memoize nav items with their active states
+  const navItemsWithActiveState = useMemo(() => {
+    return navItems.map(item => ({
+      item,
+      isActive: isActive(item.href)
+    }));
+  }, [isActive]);
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border backdrop-blur-sm">
       <div className="flex items-center justify-around py-2u px-1u">
-        {navItems.map((item) => {
-          const active = isActive(item.href);
-          
-          if (item.isSpecial) {
-            // Special prominent "Jual" button
-            return (
-              <Link key={item.href} href={item.href}>
-                <div className="flex flex-col items-center space-y-1">
-                  <div className={cn(
-                    "w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200",
-                    "bg-primary text-white shadow-lg hover:shadow-xl hover:scale-105",
-                    "border-2 border-primary-hover"
-                  )}>
-                    {item.icon}
-                  </div>
-                  <span className="text-caption font-medium text-primary">
-                    {item.label}
-                  </span>
-                </div>
-              </Link>
-            );
-          }
-
-          // Regular nav items
-          return (
-            <Link key={item.href} href={item.href}>
-              <div className="flex flex-col items-center space-y-1u py-1u px-2u transition-all duration-200 hover:bg-surface-secondary rounded-button">
-                <div className={cn(
-                  "transition-colors duration-200",
-                  active ? "text-primary" : "text-text-secondary"
-                )}>
-                  {active && item.activeIcon ? item.activeIcon : item.icon}
-                </div>
-                <span className={cn(
-                  "text-caption font-medium transition-colors duration-200",
-                  active ? "text-primary" : "text-text-secondary"
-                )}>
-                  {item.label}
-                </span>
-              </div>
-            </Link>
-          );
-        })}
+        {navItemsWithActiveState.map(({ item, isActive }) => (
+          <NavItem key={item.href} item={item} isActive={isActive} />
+        ))}
       </div>
     </nav>
   );
-}; 
+});
+
+BottomNavBar.displayName = 'BottomNavBar'; 
