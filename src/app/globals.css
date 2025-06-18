@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base styles from UI/UX Guide */
+@layer base {
+  html {
+    font-family: var(--font-inter), system-ui, sans-serif;
+  }
+  
+  body {
+    @apply bg-background text-text-primary;
+  }
+}
+
+/* Component classes following UI/UX Guide */
+@layer components {
+  /* Button variants */
+  .btn-primary {
+    @apply bg-primary text-white px-4u py-3 rounded-button text-label;
+    @apply transition-all duration-standard ease-standard;
+    @apply hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-accent;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-secondary {
+    @apply border border-primary text-primary bg-transparent px-4u py-3 rounded-button text-label;
+    @apply transition-all duration-standard ease-standard;
+    @apply hover:bg-primary-light focus:outline-none focus:ring-2 focus:ring-accent;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-ghost {
+    @apply text-primary bg-transparent px-4u py-3 rounded-button text-label;
+    @apply transition-all duration-standard ease-standard;
+    @apply hover:bg-primary-light focus:outline-none focus:ring-2 focus:ring-accent;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-destructive {
+    @apply bg-error text-white px-4u py-3 rounded-button text-label;
+    @apply transition-all duration-standard ease-standard;
+    @apply hover:bg-error-hover focus:outline-none focus:ring-2 focus:ring-text-primary;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  /* Input field styles */
+  .input-field {
+    @apply w-full px-3u py-3 bg-background border border-border rounded-input;
+    @apply text-body-large placeholder-text-secondary;
+    @apply transition-all duration-standard ease-standard;
+    @apply focus:outline-none focus:border-primary focus:border-2;
+    @apply disabled:bg-border disabled:text-text-secondary disabled:cursor-not-allowed;
+  }
+  
+  .input-error {
+    @apply border-error border-2;
+  }
+  
+  /* Card styles */
+  .card {
+    @apply bg-surface rounded-card shadow-card p-2u;
+    @apply transition-all duration-standard ease-standard;
+  }
+  
+  .card-listing {
+    @apply card hover:shadow-lg cursor-pointer;
+  }
+  
+  .card-group-buy {
+    @apply card border border-border;
+  }
+  
+  /* Layout helpers */
+  .page-padding {
+    @apply px-2u;
+  }
+  
+  .section-gap {
+    @apply space-y-2u;
+  }
+  
+  /* Avatar styles */
+  .avatar {
+    @apply rounded-avatar object-cover;
+  }
+  
+  .avatar-sm {
+    @apply w-6 h-6;
+  }
+  
+  .avatar-md {
+    @apply w-10 h-10;
+  }
+  
+  .avatar-lg {
+    @apply w-16 h-16;
+  }
+  
+  /* Progress bar */
+  .progress-bar {
+    @apply w-full bg-border rounded-full h-2;
+  }
+  
+  .progress-fill {
+    @apply bg-accent h-2 rounded-full transition-all duration-300;
+  }
+  
+  /* Modal styles */
+  .modal-overlay {
+    @apply fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm z-50;
+    @apply flex items-center justify-center p-4u;
+  }
+  
+  .modal-content {
+    @apply bg-surface rounded-card shadow-modal max-w-md w-full;
+    @apply transform transition-all duration-300;
+  }
+  
+  /* Toast/Snackbar */
+  .toast {
+    @apply fixed bottom-20 left-2u right-2u mx-auto max-w-sm;
+    @apply bg-text-primary text-white px-4u py-3u rounded-card;
+    @apply transform transition-all duration-300;
+  }
+} 

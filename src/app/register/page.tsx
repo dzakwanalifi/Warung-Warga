@@ -1,188 +1,293 @@
-'use client'
+'use client';
 
-import React, { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { Button } from '@/components/Button'
-import { Input } from '@/components/Input'
-import { registerUser } from '@/lib/authService'
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { Input } from '@/components/Input';
+import { Button } from '@/components/Button';
+import { useAuthStore } from '@/hooks/useAuthStore';
+import { registerUser } from '@/lib/authService';
+import { isValidEmail } from '@/lib/utils';
 
 export default function RegisterPage() {
-  const router = useRouter()
-  
-  // Form state
-  const [fullName, setFullName] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
+  const router = useRouter();
+  const { loginAction, isAuthenticated, setLoading, isLoading } = useAuthStore();
+  const [mounted, setMounted] = useState(false);
 
+  // Form states
+  const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+  });
+
+  const [errors, setErrors] = useState({
+    fullName: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    general: '',
+  });
+
+  const [touched, setTouched] = useState({
+    fullName: false,
+    email: false,
+    password: false,
+    confirmPassword: false,
+  });
+
+  // Ensure client-side hydration
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Redirect if already authenticated (only after mounting)
+  useEffect(() => {
+    if (mounted && isAuthenticated) {
+      router.push('/');
+    }
+  }, [mounted, isAuthenticated, router]);
+
+  // Don't render until mounted to prevent hydration mismatch
+  if (!mounted) {
+    return null;
+  }
+
+  // Validation function
+  const validateForm = () => {
+    const newErrors = {
+      fullName: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      general: '',
+    };
+
+    // Full name validation
+    if (!formData.fullName) {
+      newErrors.fullName = 'Nama lengkap wajib diisi';
+    } else if (formData.fullName.length < 2) {
+      newErrors.fullName = 'Nama lengkap minimal 2 karakter';
+    }
+
+    // Email validation
+    if (!formData.email) {
+      newErrors.email = 'Email wajib diisi';
+    } else if (!isValidEmail(formData.email)) {
+      newErrors.email = 'Format email tidak valid';
+    }
+
+    // Password validation
+    if (!formData.password) {
+      newErrors.password = 'Password wajib diisi';
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Password minimal 6 karakter';
+    }
+
+    // Confirm password validation
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = 'Konfirmasi password wajib diisi';
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Password tidak cocok';
+    }
+
+    setErrors(newErrors);
+    return !newErrors.fullName && !newErrors.email && !newErrors.password && !newErrors.confirmPassword;
+  };
+
+  // Handle input changes
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Clear field error when user starts typing
+    if (errors[field as keyof typeof errors]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+
+    // Real-time password confirmation validation
+    if (field === 'confirmPassword' && formData.password) {
+      if (value !== formData.password) {
+        setErrors(prev => ({ ...prev, confirmPassword: 'Password tidak cocok' }));
+      } else {
+        setErrors(prev => ({ ...prev, confirmPassword: '' }));
+      }
+    }
+  };
+
+  // Handle input blur for validation
+  const handleInputBlur = (field: string) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+    
+    // Validate individual fields on blur
+    if (field === 'fullName' && formData.fullName && formData.fullName.length < 2) {
+      setErrors(prev => ({ ...prev, fullName: 'Nama lengkap minimal 2 karakter' }));
+    }
+    
+    if (field === 'email' && formData.email && !isValidEmail(formData.email)) {
+      setErrors(prev => ({ ...prev, email: 'Format email tidak valid' }));
+    }
+    
+    if (field === 'password' && formData.password && formData.password.length < 6) {
+      setErrors(prev => ({ ...prev, password: 'Password minimal 6 karakter' }));
+    }
+    
+    if (field === 'confirmPassword' && formData.confirmPassword && formData.password !== formData.confirmPassword) {
+      setErrors(prev => ({ ...prev, confirmPassword: 'Password tidak cocok' }));
+    }
+  };
+
+  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
-
-    // Validation
-    if (password !== confirmPassword) {
-      setError('Password dan konfirmasi password tidak cocok')
-      setLoading(false)
-      return
+    e.preventDefault();
+    
+    // Validate form
+    if (!validateForm()) {
+      return;
     }
 
-    if (password.length < 6) {
-      setError('Password minimal 6 karakter')
-      setLoading(false)
-      return
-    }
+    // Set loading state for instant feedback
+    setLoading(true);
+    setErrors(prev => ({ ...prev, general: '' }));
 
     try {
-      await registerUser(fullName, email, password)
+      // Call register service
+      const authResponse = await registerUser(
+        formData.fullName,
+        formData.email,
+        formData.password
+      );
       
-      // Registration success
-      setSuccess(true)
+      // Store user data and token
+      loginAction(authResponse.user, authResponse.session.access_token);
       
-      // Redirect to login after a short delay
-      setTimeout(() => {
-        router.push('/login')
-      }, 2000)
-      
-    } catch (err: any) {
-      setError(err.message || 'Terjadi kesalahan saat mendaftar')
+      // Redirect to home page
+      router.push('/');
+    } catch (error: any) {
+      // Handle registration error
+      setErrors(prev => ({
+        ...prev,
+        general: error.message || 'Registrasi gagal. Silakan coba lagi.',
+      }));
     } finally {
-      setLoading(false)
+      // Always turn off loading
+      setLoading(false);
     }
-  }
-
-  if (success) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background px-2u py-4u">
-        <div className="w-full max-w-md text-center">
-          <div className="card">
-            <div className="text-center py-4u">
-              <div className="w-16 h-16 bg-success rounded-full flex items-center justify-center mx-auto mb-3u">
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                </svg>
-              </div>
-              <h1 className="text-heading-1 font-bold text-success mb-2">
-                Pendaftaran Berhasil!
-              </h1>
-              <p className="text-body-small text-text-secondary mb-4u">
-                Akun Anda telah berhasil dibuat. Anda akan diarahkan ke halaman login...
-              </p>
-              <Link href="/login">
-                <Button>
-                  Lanjut ke Login
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-2u py-4u">
+    <div className="min-h-screen bg-background flex items-center justify-center page-padding py-5u">
       <div className="w-full max-w-md">
         {/* Header */}
-        <div className="text-center mb-4u">
-          <h1 className="text-heading-1 font-bold text-primary mb-2">
-            Daftar Warung Warga
+        <div className="text-center mb-5u">
+          <h1 className="text-heading-1 text-primary mb-1u">
+            Bergabung dengan Warung Warga
           </h1>
           <p className="text-body-small text-text-secondary">
-            Bergabung dengan komunitas jual beli dan borongan di sekitar Anda
+            Daftar untuk mulai berbelanja dan berpartisipasi dalam komunitas
           </p>
         </div>
 
-        {/* Form */}
+        {/* Registration Form */}
         <div className="card">
-          <form onSubmit={handleSubmit} className="space-y-2u">
-            {error && (
-              <div className="bg-red-50 border border-error rounded-input p-3u">
-                <p className="text-body-small text-error">{error}</p>
+          <form onSubmit={handleSubmit} className="p-4u space-y-4u">
+            {/* General Error */}
+            {errors.general && (
+              <div className="bg-error/10 border border-error/20 rounded-button p-3u">
+                <p className="text-body-small text-error text-center">
+                  {errors.general}
+                </p>
               </div>
             )}
 
+            {/* Full Name Input */}
             <Input
               label="Nama Lengkap"
               type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Masukkan nama lengkap Anda"
+              placeholder="Masukkan nama lengkap"
+              value={formData.fullName}
+              onChange={(value) => handleInputChange('fullName', value)}
+              onBlur={() => handleInputBlur('fullName')}
+              error={touched.fullName ? errors.fullName : ''}
               required
-              disabled={loading}
+              disabled={isLoading}
             />
 
+            {/* Email Input */}
             <Input
               label="Email"
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="masukkan.email@example.com"
+              placeholder="nama@email.com"
+              value={formData.email}
+              onChange={(value) => handleInputChange('email', value)}
+              onBlur={() => handleInputBlur('email')}
+              error={touched.email ? errors.email : ''}
               required
-              disabled={loading}
+              disabled={isLoading}
             />
 
+            {/* Password Input */}
             <Input
               label="Password"
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Minimal 6 karakter"
+              placeholder="Buat password (min. 6 karakter)"
+              value={formData.password}
+              onChange={(value) => handleInputChange('password', value)}
+              onBlur={() => handleInputBlur('password')}
+              error={touched.password ? errors.password : ''}
               required
-              disabled={loading}
-              helperText="Password harus minimal 6 karakter"
+              disabled={isLoading}
             />
 
+            {/* Confirm Password Input */}
             <Input
               label="Konfirmasi Password"
               type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Ulangi password Anda"
+              placeholder="Ketik ulang password"
+              value={formData.confirmPassword}
+              onChange={(value) => handleInputChange('confirmPassword', value)}
+              onBlur={() => handleInputBlur('confirmPassword')}
+              error={touched.confirmPassword ? errors.confirmPassword : ''}
               required
-              disabled={loading}
+              disabled={isLoading}
             />
 
-            <div className="pt-2u">
-              <Button
-                type="submit"
-                loading={loading}
-                className="w-full"
-                disabled={!fullName || !email || !password || !confirmPassword}
-              >
-                {loading ? 'Mendaftar...' : 'Daftar'}
-              </Button>
-            </div>
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              variant="primary"
+              fullWidth
+              loading={isLoading}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Sedang Mendaftar...' : 'Daftar Sekarang'}
+            </Button>
           </form>
-
-          {/* Footer */}
-          <div className="mt-3u pt-3u border-t border-border text-center">
-            <p className="text-body-small text-text-secondary">
-              Sudah punya akun?{' '}
-              <Link 
-                href="/login"
-                className="text-primary hover:text-primary-hover font-medium"
-              >
-                Masuk di sini
-              </Link>
-            </p>
-          </div>
         </div>
 
-        {/* Back to home */}
+        {/* Login Link */}
+        <div className="text-center mt-4u">
+          <p className="text-body-small text-text-secondary">
+            Sudah punya akun?{' '}
+            <Link 
+              href="/login" 
+              className="text-primary hover:underline font-medium"
+            >
+              Masuk di sini
+            </Link>
+          </p>
+        </div>
+
+        {/* Back to Home */}
         <div className="text-center mt-3u">
           <Link 
-            href="/"
-            className="text-body-small text-text-secondary hover:text-primary"
+            href="/" 
+            className="text-caption text-text-secondary hover:text-primary"
           >
-            ← Kembali ke beranda
+            ← Kembali ke Beranda
           </Link>
         </div>
       </div>
     </div>
-  )
+  );
 } 

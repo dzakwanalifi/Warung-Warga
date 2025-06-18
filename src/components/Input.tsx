@@ -1,51 +1,67 @@
-import React from 'react'
+import React from 'react';
+import { cn } from '@/lib/utils';
 
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  label?: string
-  error?: string
-  helperText?: string
+interface InputProps {
+  label?: string;
+  type?: string;
+  placeholder?: string;
+  value: string;
+  onChange: (value: string) => void;
+  onBlur?: () => void;
+  error?: string;
+  required?: boolean;
+  disabled?: boolean;
+  className?: string;
 }
 
 export const Input: React.FC<InputProps> = ({
   label,
+  type = 'text',
+  placeholder,
+  value,
+  onChange,
+  onBlur,
   error,
-  helperText,
+  required = false,
+  disabled = false,
   className = '',
-  id,
-  ...props
 }) => {
-  const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`
-  
-  const inputClasses = `input-field w-full ${error ? 'input-error' : ''} ${className}`
-
   return (
-    <div className="space-y-1">
+    <div className={cn('space-y-1u', className)}>
       {label && (
-        <label
-          htmlFor={inputId}
-          className="block text-label text-text-primary font-medium"
-        >
+        <label className="block text-body-small font-medium text-text-primary">
           {label}
+          {required && <span className="text-error ml-1">*</span>}
         </label>
       )}
       
       <input
-        id={inputId}
-        className={inputClasses}
-        {...props}
+        type={type}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
+        disabled={disabled}
+        className={cn(
+          'w-full px-3u py-2u border rounded-input',
+          'text-body-regular text-text-primary',
+          'placeholder:text-text-secondary',
+          'focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary',
+          'transition-colors duration-200',
+          {
+            'border-error focus:ring-error/20 focus:border-error': error,
+            'border-border': !error,
+            'bg-surface-secondary cursor-not-allowed': disabled,
+            'bg-surface-primary': !disabled,
+          }
+        )}
       />
       
       {error && (
-        <p className="text-caption text-error mt-1">
+        <p className="text-caption text-error">
           {error}
         </p>
       )}
-      
-      {helperText && !error && (
-        <p className="text-caption text-text-secondary mt-1">
-          {helperText}
-        </p>
-      )}
     </div>
-  )
-} 
+  );
+}; 
