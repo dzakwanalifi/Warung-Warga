@@ -9,7 +9,7 @@ import { ToastContainer, useToast } from '@/components/Toast';
 import { AIInsights } from '@/components/AIInsights';
 import { PriceRecommendation } from '@/components/PriceRecommendation';
 import { cn } from '@/lib/utils';
-import { createLapak, analyzeLapakImage } from '@/lib/lapakService';
+import { createLapak, analyzeImages } from '@/lib/lapakService';
 
 // Category options
 const CATEGORIES = [
@@ -68,63 +68,51 @@ export default function BukaLapakPage() {
   // Generate AI description
   const handleGenerateAIDescription = async () => {
     if (images.length === 0) {
-      toast.warning('Foto Diperlukan', 'Mohon unggah setidaknya satu foto produk terlebih dahulu');
+      toast.warning("Foto Diperlukan", "Silakan upload foto produk terlebih dahulu untuk analisis AI");
       return;
     }
 
     setIsGeneratingDescription(true);
-    toast.info('Menganalisis Produk', 'AI sedang menganalisis foto dan membuat deskripsi menarik...');
-
+    
     try {
-      // Call the real AI API with the first image
-      const aiAnalysis = await analyzeLapakImage(images[0]);
+      console.log('🤖 Starting AI analysis for product...');
+      const analysisResult = await analyzeImages(images);
       
-      // Update form fields with AI analysis results
-      if (aiAnalysis.title && aiAnalysis.title !== 'Produk Segar') {
-        handleInputChange('title', aiAnalysis.title);
-      }
+      // Update form with AI analysis results - using product_info from enhanced result
+      const productInfo = analysisResult.product_info;
       
-      if (aiAnalysis.description) {
-        handleInputChange('description', aiAnalysis.description);
-      }
+      console.log('✅ AI Analysis completed:', productInfo);
       
-      if (aiAnalysis.suggested_price && aiAnalysis.suggested_price > 0) {
-        handleInputChange('price', aiAnalysis.suggested_price.toString());
-      }
+      setFormData(prev => ({
+        ...prev,
+        title: productInfo.title || prev.title,
+        description: productInfo.description || prev.description,
+        price: productInfo.suggested_price?.toString() || prev.price,
+        category: productInfo.category || prev.category
+      }));
+
+      toast.success("Analisis AI Selesai", "Form telah diisi otomatis berdasarkan analisis foto produk");
+
+    } catch (error: any) {
+      console.error('❌ AI Analysis failed:', error);
       
-      if (aiAnalysis.category) {
-        // Try to match the AI category with our predefined categories
-        const matchedCategory = CATEGORIES.find(cat => 
-          cat.label.toLowerCase().includes(aiAnalysis.category!.toLowerCase()) ||
-          aiAnalysis.category!.toLowerCase().includes(cat.label.toLowerCase())
-        );
-        
-        if (matchedCategory) {
-          handleCategorySelect(matchedCategory.id);
-        }
-      }
-      
-      toast.success('Analisis AI Selesai!', 'Produk berhasil dianalisis dan form telah diisi otomatis. Anda dapat mengedit hasilnya sesuai kebutuhan.');
-      
-    } catch (error) {
-      console.error('AI generation error:', error);
-      
-      if (error instanceof Error) {
-        toast.error('Gagal menganalisis produk', error.message);
-      } else {
-        toast.error('Gagal menganalisis produk', 'Terjadi kesalahan saat menganalisis foto. Silakan coba lagi.');
-      }
-      
-      // Fallback to intelligent description if AI fails
-      const aiDescription = generateIntelligentDescription(
-        formData.title.trim() || '', 
-        selectedCategory || '', 
+      // Fallback: Generate intelligent description based on available data
+      const intelligentDescription = generateIntelligentDescription(
+        formData.title, 
+        formData.category, 
         images
       );
       
-      handleInputChange('description', aiDescription);
-      toast.info('Menggunakan Deskripsi Alternatif', 'Deskripsi dibuat berdasarkan analisis lokal');
-      
+      if (intelligentDescription && intelligentDescription !== formData.description) {
+        setFormData(prev => ({
+          ...prev,
+          description: intelligentDescription
+        }));
+        
+        toast.success("Deskripsi Diperbarui", "Deskripsi telah dibuat berdasarkan informasi yang tersedia");
+      } else {
+        toast.error("Analisis AI Gagal", error.message || "Silakan isi form secara manual");
+      }
     } finally {
       setIsGeneratingDescription(false);
     }

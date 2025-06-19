@@ -332,4 +332,30 @@ export const PAYMENT_STATUS_OPTIONS = [
   { value: 'paid', label: 'Lunas' },
   { value: 'failed', label: 'Gagal' },
   { value: 'refunded', label: 'Dikembalikan' },
-] as const; 
+] as const;
+
+// Enhanced AI Analysis Types
+export interface PhotoQualityAnalysis {
+  overall_score: number;
+  lighting_score: number;
+  composition_score: number;
+  focus_score: number;
+  background_score: number;
+  color_vibrancy: number;
+}
+
+export interface PhotoInsight {
+  type: 'success' | 'warning' | 'info' | 'suggestion';
+  category: 'quality' | 'lighting' | 'composition' | 'appeal' | 'visibility';
+  title: string;
+  description: string;
+  confidence: number;
+  actionable: boolean;
+}
+
+export interface EnhancedAnalysisResult {
+  product_info: LapakAnalysisResult;
+  photo_quality: PhotoQualityAnalysis;
+  insights: PhotoInsight[];
+  recommendations: string[];
+} 

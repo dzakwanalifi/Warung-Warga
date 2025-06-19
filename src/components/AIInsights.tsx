@@ -2,26 +2,35 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
-  Sparkles, 
+  Camera, 
   CheckCircle, 
   AlertTriangle, 
   Info, 
-  Camera, 
-  Eye,
-  Star,
+  Lightbulb, 
+  Eye, 
+  Palette, 
+  Grid, 
+  Sun,
+  Target,
   TrendingUp,
-  Target
+  Loader2,
+  Star,
+  Sparkles,
+  Layers
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { analyzeImages as analyzeImagesAPI } from '@/lib/lapakService';
+import { EnhancedAnalysisResult, PhotoInsight } from '@/lib/types';
 
 interface AIInsight {
   id: string;
   type: 'success' | 'warning' | 'info' | 'suggestion';
-  category: 'quality' | 'visibility' | 'appeal' | 'optimization';
+  category: 'quality' | 'visibility' | 'appeal' | 'optimization' | 'composition' | 'lighting';
   title: string;
   description: string;
   confidence: number;
   actionable?: boolean;
+  photoSpecific?: boolean; // New field to indicate photo-specific insights
 }
 
 interface AIInsightsProps {
@@ -31,18 +40,23 @@ interface AIInsightsProps {
   onInsightClick?: (insight: AIInsight) => void;
 }
 
-// Mock AI analysis function
+// Convert backend PhotoInsight to frontend AIInsight
+const convertPhotoInsight = (backendInsight: PhotoInsight, index: number): AIInsight => {
+  return {
+    id: `api-${index}`,
+    type: backendInsight.type,
+    category: backendInsight.category as any,
+    title: backendInsight.title,
+    description: backendInsight.description,
+    confidence: backendInsight.confidence,
+    actionable: backendInsight.actionable,
+    photoSpecific: true
+  };
+};
+
 const analyzeImages = async (images: File[], productName?: string): Promise<AIInsight[]> => {
-  // Simulate AI processing delay
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  const insights: AIInsight[] = [];
-  const imageCount = images.length;
-  const hasProductName = productName && productName.trim().length > 0;
-  
-  // Generate insights based on image count and product name availability
-  if (imageCount === 0) {
-    insights.push({
+  if (images.length === 0) {
+    return [{
       id: 'no-images',
       type: 'warning',
       category: 'visibility',
@@ -50,180 +64,211 @@ const analyzeImages = async (images: File[], productName?: string): Promise<AIIn
       description: 'Tambahkan foto untuk mendapatkan analisis AI yang komprehensif',
       confidence: 100,
       actionable: true
-    });
-    return insights;
+    }];
   }
 
-  // Basic image quality insights (always available)
-  insights.push({
-    id: 'image-quality',
-    type: 'success',
-    category: 'quality',
-    title: 'Kualitas Foto Baik',
-    description: `${imageCount} foto terunggah dengan kualitas yang memadai untuk menampilkan produk`,
-    confidence: 85,
-    actionable: false
-  });
+  try {
+    console.log(`🔍 Analyzing ${images.length} photo(s) with consolidated AI API...`);
+    const analysisResult = await analyzeImagesAPI(images);
 
-  // Image count based insights
-  if (imageCount === 1) {
-    insights.push({
-      id: 'more-angles',
-      type: 'suggestion',
-      category: 'visibility',
-      title: 'Tambahkan Sudut Pandang Lain',
-      description: 'Foto dari berbagai sudut dapat meningkatkan kepercayaan pembeli hingga 40%',
-      confidence: 90,
-      actionable: true
-    });
-  } else if (imageCount >= 2) {
-    insights.push({
-      id: 'good-coverage',
-      type: 'success',
-      category: 'visibility',
-      title: 'Cakupan Visual Lengkap',
-      description: `${imageCount} foto memberikan gambaran produk yang komprehensif`,
-      confidence: 95,
-      actionable: false
-    });
-  }
+    const insights: AIInsight[] = [];
 
-  if (!hasProductName) {
-    // Generic insights when product name is not available
-    insights.push({
-      id: 'generic-appeal',
-      type: 'info',
-      category: 'appeal',
-      title: 'Siap untuk Analisis Mendalam',
-      description: 'Tambahkan nama produk untuk mendapatkan rekomendasi yang lebih spesifik dan personal',
-      confidence: 80,
-      actionable: true
+    // Convert backend insights to frontend format
+    analysisResult.insights.forEach((insight, index) => {
+      insights.push(convertPhotoInsight(insight, index));
     });
 
-    insights.push({
-      id: 'generic-optimization',
-      type: 'suggestion',
-      category: 'optimization',
-      title: 'Potensi Optimisasi Tersedia',
-      description: 'Dengan informasi produk lengkap, AI dapat memberikan saran optimisasi yang lebih baik',
-      confidence: 75,
-      actionable: true
-    });
-  } else {
-    // Product name specific insights
-    const nameWords = productName.toLowerCase().split(' ');
-    
-    // Analyze product characteristics
-    const isOrganic = nameWords.some(word => ['organik', 'organic', 'alami', 'natural'].includes(word));
-    const isFresh = nameWords.some(word => ['segar', 'fresh', 'baru'].includes(word));
-    const isPremium = nameWords.some(word => ['premium', 'super', 'grade', 'kualitas'].includes(word));
-    const isHomemade = nameWords.some(word => ['rumahan', 'buatan', 'homemade', 'tradisional'].includes(word));
-    const isLarge = nameWords.some(word => ['besar', 'jumbo', 'large', 'xl'].includes(word));
-    
-    // Product type detection
-    const isRice = nameWords.some(word => ['beras', 'rice'].includes(word));
-    const isVegetable = nameWords.some(word => ['sayur', 'vegetable', 'kangkung', 'bayam', 'sawi', 'cabai', 'tomat'].includes(word));
-    const isFruit = nameWords.some(word => ['buah', 'fruit', 'apel', 'jeruk', 'pisang', 'mangga', 'anggur'].includes(word));
-    const isDrink = nameWords.some(word => ['jus', 'juice', 'minuman', 'drink', 'kopi', 'teh'].includes(word));
-    const isCake = nameWords.some(word => ['kue', 'cake', 'roti', 'cookies'].includes(word));
-    const isSpice = nameWords.some(word => ['bumbu', 'rempah', 'garam', 'gula', 'merica'].includes(word));
-
-    // Product-specific appeal insights
-    if (isFresh || isVegetable || isFruit) {
-      insights.push({
-        id: 'freshness-appeal',
+    // Add quality score insights
+    const qualityScore = analysisResult.photo_quality.overall_score;
+    if (qualityScore > 85) {
+      insights.unshift({
+        id: 'quality-excellent',
         type: 'success',
-        category: 'appeal',
-        title: 'Emphasize Kesegaran',
-        description: 'Produk segar memiliki daya tarik tinggi. Pastikan foto menunjukkan kondisi produk yang prima',
-        confidence: 95,
-        actionable: true
+        category: 'quality',
+        title: 'Kualitas Foto Excellent',
+        description: `Foto memiliki kualitas sangat baik dengan skor ${qualityScore}/100. Pencahayaan, komposisi, dan ketajaman optimal.`,
+        confidence: qualityScore,
+        actionable: false,
+        photoSpecific: true
       });
-    } else if (isCake || nameWords.some(word => ['kue', 'makanan'].includes(word))) {
-      insights.push({
-        id: 'food-appeal',
-        type: 'suggestion',
-        category: 'appeal',
-        title: 'Tingkatkan Food Appeal',
-        description: 'Foto makanan dengan pencahayaan yang baik dapat meningkatkan minat beli hingga 60%',
-        confidence: 88,
-        actionable: true
+    } else if (qualityScore > 70) {
+      insights.unshift({
+        id: 'quality-good',
+        type: 'success',
+        category: 'quality',
+        title: 'Kualitas Foto Baik',
+        description: `Foto memiliki kualitas baik dengan skor ${qualityScore}/100. Beberapa aspek masih bisa ditingkatkan.`,
+        confidence: qualityScore,
+        actionable: true,
+        photoSpecific: true
       });
-    } else if (isDrink) {
+    } else {
+      insights.unshift({
+        id: 'quality-needs-improvement',
+        type: 'warning',
+        category: 'quality',
+        title: 'Kualitas Foto Perlu Ditingkatkan',
+        description: `Foto memiliki skor ${qualityScore}/100. Perbaiki pencahayaan dan komposisi untuk hasil yang lebih baik.`,
+        confidence: Math.max(qualityScore, 60),
+        actionable: true,
+        photoSpecific: true
+      });
+    }
+
+    // Add specific quality metric insights
+    const { lighting_score, composition_score, focus_score, background_score, color_vibrancy } = analysisResult.photo_quality;
+    
+    if (lighting_score < 60) {
       insights.push({
-        id: 'drink-appeal',
+        id: 'lighting-improvement',
         type: 'suggestion',
-        category: 'appeal',
-        title: 'Tampilkan Kesegaran Minuman',
-        description: 'Foto dengan efek segar (condensation, es) membuat minuman terlihat lebih menarik',
+        category: 'lighting',
+        title: 'Perbaiki Pencahayaan',
+        description: `Pencahayaan foto perlu diperbaiki (skor: ${lighting_score}/100). Gunakan cahaya alami atau lampu putih yang merata.`,
         confidence: 85,
-        actionable: true
+        actionable: true,
+        photoSpecific: true
       });
     }
 
-    // Characteristic-based insights
-    if (isOrganic) {
+    if (composition_score < 60) {
       insights.push({
-        id: 'organic-highlight',
-        type: 'success',
-        category: 'appeal',
-        title: 'Highlight Aspek Organik',
-        description: 'Produk organik memiliki nilai premium. Tekankan sertifikasi dan kealamian produk',
-        confidence: 92,
-        actionable: true
+        id: 'composition-improvement',
+        type: 'suggestion',
+        category: 'composition',
+        title: 'Optimalkan Komposisi',
+        description: `Komposisi foto bisa diperbaiki (skor: ${composition_score}/100). Coba posisikan produk menggunakan rule of thirds.`,
+        confidence: 80,
+        actionable: true,
+        photoSpecific: true
       });
     }
 
-    if (isHomemade) {
+    if (focus_score < 70) {
       insights.push({
-        id: 'homemade-appeal',
-        type: 'success',
-        category: 'appeal',
-        title: 'Autentisitas Rumahan',
-        description: 'Produk rumahan memiliki daya tarik personal. Ceritakan proses pembuatan yang unik',
-        confidence: 88,
-        actionable: true
+        id: 'focus-improvement',
+        type: 'warning',
+        category: 'quality',
+        title: 'Tingkatkan Ketajaman',
+        description: `Ketajaman foto perlu diperbaiki (skor: ${focus_score}/100). Pastikan kamera fokus pada produk dan tangan tidak bergetar.`,
+        confidence: 85,
+        actionable: true,
+        photoSpecific: true
       });
     }
 
-    if (isPremium) {
+    // Add recommendations as insights
+    analysisResult.recommendations.forEach((recommendation, index) => {
       insights.push({
-        id: 'premium-positioning',
+        id: `recommendation-${index}`,
         type: 'info',
         category: 'optimization',
-        title: 'Posisi Premium Detected',
-        description: 'Produk premium memerlukan presentasi yang berkelas. Fokus pada kualitas dan eksklusivitas',
-        confidence: 90,
-        actionable: true
+        title: 'Rekomendasi AI',
+        description: recommendation,
+        confidence: 80,
+        actionable: true,
+        photoSpecific: true
       });
-    }
+    });
 
-    // Optimization insights
-    if (imageCount >= 2) {
+    // Add insights based on number of photos
+    if (images.length === 1) {
       insights.push({
-        id: 'market-potential',
+        id: 'single-photo-tip',
+        type: 'suggestion',
+        category: 'visibility',
+        title: 'Tambahkan Foto dari Sudut Lain',
+        description: 'Foto dari berbagai sudut akan memberikan gambaran produk yang lebih lengkap kepada pembeli dan meningkatkan kepercayaan.',
+        confidence: 90,
+        actionable: true,
+        photoSpecific: true
+      });
+    } else if (images.length > 3) {
+      insights.push({
+        id: 'multiple-photos-success',
         type: 'success',
-        category: 'optimization',
-        title: 'Potensi Pasar Tinggi',
-        description: 'Dengan foto berkualitas dan informasi lengkap, produk ini memiliki potensi penjualan yang baik',
-        confidence: 87,
-        actionable: false
+        category: 'visibility',
+        title: 'Variasi Foto Excellent',
+        description: `${images.length} foto memberikan gambaran produk yang sangat lengkap dari berbagai perspektif. Ini akan meningkatkan kepercayaan pembeli secara signifikan.`,
+        confidence: 95,
+        actionable: false,
+        photoSpecific: true
       });
     }
-  }
 
-  // Actionable recommendations
-  if (imageCount < 3) {
+    return insights;
+
+  } catch (error) {
+    console.error('❌ Failed to analyze photos with consolidated API, using fallback insights:', error);
+    
+    // Fallback to basic insights if API fails
+    return getFallbackInsights(images, productName);
+  }
+};
+
+// Fallback function when API is not available
+const getFallbackInsights = (images: File[], productName?: string): AIInsight[] => {
+  const insights: AIInsight[] = [];
+  const imageCount = images.length;
+
+  // Basic insights when API is not available
+  insights.push({
+    id: 'api-unavailable',
+    type: 'info',
+    category: 'quality',
+    title: 'Analisis Foto Standar',
+    description: 'Layanan AI analisis sedang tidak tersedia. Menggunakan analisis standar berdasarkan jumlah foto yang diunggah.',
+    confidence: 70,
+    actionable: false,
+    photoSpecific: true
+  });
+
+  if (imageCount === 1) {
     insights.push({
-      id: 'add-detail-shots',
+      id: 'single-photo-fallback',
       type: 'suggestion',
       category: 'visibility',
-      title: 'Tambahkan Foto Detail',
-      description: 'Foto close-up, kemasan, dan detail produk dapat meningkatkan konversi penjualan',
-      confidence: 83,
-      actionable: true
+      title: 'Tambahkan Lebih Banyak Foto',
+      description: 'Foto dari berbagai sudut akan memberikan gambaran produk yang lebih lengkap kepada pembeli.',
+      confidence: 85,
+      actionable: true,
+      photoSpecific: true
+    });
+  } else if (imageCount >= 3) {
+    insights.push({
+      id: 'multiple-photos-fallback',
+      type: 'success',
+      category: 'visibility',
+      title: 'Variasi Foto Baik',
+      description: `${imageCount} foto memberikan gambaran produk dari berbagai perspektif. Ini akan meningkatkan kepercayaan pembeli.`,
+      confidence: 80,
+      actionable: false,
+      photoSpecific: true
     });
   }
+
+  // Generic photo tips
+  insights.push({
+    id: 'lighting-tip',
+    type: 'suggestion',
+    category: 'lighting',
+    title: 'Tips Pencahayaan',
+    description: 'Gunakan cahaya alami atau lampu putih yang merata untuk hasil foto yang lebih baik.',
+    confidence: 75,
+    actionable: true,
+    photoSpecific: true
+  });
+
+  insights.push({
+    id: 'background-tip',
+    type: 'suggestion',
+    category: 'composition',
+    title: 'Tips Background',
+    description: 'Background yang bersih dan polos akan membuat produk lebih menonjol.',
+    confidence: 75,
+    actionable: true,
+    photoSpecific: true
+  });
 
   return insights;
 };
@@ -264,6 +309,8 @@ export function AIInsights({ images, productName, description, onInsightClick }:
       case 'visibility': return Eye;
       case 'appeal': return Target;
       case 'optimization': return TrendingUp;
+      case 'composition': return Layers;
+      case 'lighting': return Sun;
       default: return Sparkles;
     }
   };
@@ -292,6 +339,9 @@ export function AIInsights({ images, productName, description, onInsightClick }:
     return null;
   }
 
+  const photoSpecificInsights = insights.filter(i => i.photoSpecific);
+  const generalInsights = insights.filter(i => !i.photoSpecific);
+
   return (
     <div className="bg-surface rounded-card shadow-card p-4u space-y-4u">
       {/* Header */}
@@ -302,14 +352,14 @@ export function AIInsights({ images, productName, description, onInsightClick }:
             isAnalyzing && 'animate-pulse'
           )} />
           <h3 className="text-heading-2 font-semibold text-primary">
-            AI Insights
+            AI Photo Analysis
           </h3>
         </div>
         
         {isAnalyzing && (
           <div className="flex items-center gap-2u text-sm text-text-secondary">
             <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-            Menganalisis...
+            Menganalisis foto...
           </div>
         )}
       </div>
@@ -317,7 +367,7 @@ export function AIInsights({ images, productName, description, onInsightClick }:
       {/* Loading State */}
       {isAnalyzing && (
         <div className="space-y-3u">
-          {[1, 2, 3].map((i) => (
+          {[1, 2, 3, 4].map((i) => (
             <div key={i} className="animate-pulse">
               <div className="flex items-start gap-3u p-3u bg-surface-secondary rounded-button">
                 <div className="w-5 h-5 bg-border rounded"></div>
@@ -368,6 +418,11 @@ export function AIInsights({ images, productName, description, onInsightClick }:
                       <h4 className="text-sm font-medium text-text-primary">
                         {insight.title}
                       </h4>
+                      {insight.photoSpecific && (
+                        <span className="px-2 py-0.5 text-xs bg-primary/10 text-primary rounded-full">
+                          Photo AI
+                        </span>
+                      )}
                     </div>
                     <p className="text-sm text-text-secondary">
                       {insight.description}
@@ -412,6 +467,9 @@ export function AIInsights({ images, productName, description, onInsightClick }:
             <div className="flex items-center gap-4u">
               <span>{insights.length} insight ditemukan</span>
               <span>{insights.filter(i => i.actionable).length} dapat ditindaklanjuti</span>
+              {photoSpecificInsights.length > 0 && (
+                <span className="text-primary">{photoSpecificInsights.length} analisis foto</span>
+              )}
             </div>
             <div className="flex items-center gap-1u">
               <Sparkles className="w-3 h-3" />

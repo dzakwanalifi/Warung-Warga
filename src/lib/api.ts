@@ -19,13 +19,22 @@ const baseURL = process.env.NEXT_PUBLIC_API_URL || 'https://warungwarga-api.azur
 // Create axios instance
 const api: AxiosInstance = axios.create({
   baseURL,
-  timeout: 10000, // Reduce timeout to 10 seconds for better UX
+  timeout: 10000, // Default timeout 10 seconds
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Request interceptor for adding auth token
+// Create special instance for AI analysis with longer timeout
+const aiApi: AxiosInstance = axios.create({
+  baseURL,
+  timeout: 60000, // 60 seconds for AI analysis
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Request interceptor for adding auth token (regular API)
 api.interceptors.request.use(
   (config) => {
     // Get token from localStorage if available
@@ -52,7 +61,34 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor for handling responses and errors
+// Request interceptor for AI API (same as regular but with AI logging)
+aiApi.interceptors.request.use(
+  (config) => {
+    // Get token from localStorage if available
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+    
+    // Log AI request in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🤖 AI ${config.method?.toUpperCase()} ${config.url}`, {
+        data: config.data instanceof FormData ? '[FormData]' : config.data,
+        params: config.params,
+      });
+    }
+    
+    return config;
+  },
+  (error) => {
+    console.error('AI Request interceptor error:', error);
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor for handling responses and errors (regular API)
 api.interceptors.response.use(
   (response: AxiosResponse) => {
     // Log response in development
@@ -110,6 +146,52 @@ api.interceptors.response.use(
   }
 );
 
+// Response interceptor for AI API (with AI-specific error handling)
+aiApi.interceptors.response.use(
+  (response: AxiosResponse) => {
+    // Log AI response in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🤖✅ AI ${response.config.method?.toUpperCase()} ${response.config.url}`, {
+        status: response.status,
+        data: response.data,
+      });
+    }
+    
+    return response;
+  },
+  (error) => {
+    // Log AI error in development
+    if (process.env.NODE_ENV === 'development') {
+      console.error(`🤖❌ AI API Error:`, {
+        url: error.config?.url,
+        status: error.response?.status,
+        message: error.response?.data?.message || error.message,
+        data: error.response?.data,
+        detail: error.response?.data?.detail,
+      });
+    }
+    
+    // Handle AI-specific timeout with better message
+    if (error.code === 'ECONNABORTED') {
+      console.error('AI Analysis timeout - this is normal for complex analysis');
+    }
+    
+    // Transform error for AI-specific handling
+    const apiError: ApiError = {
+      message: error.response?.data?.message || 
+               error.message === 'Network Error' ? 'Koneksi bermasalah. Coba lagi nanti.' :
+               error.code === 'ECONNABORTED' ? 'Analisis AI membutuhkan waktu lama. Coba lagi atau gunakan gambar yang lebih kecil.' :
+               error.response?.status === 422 && error.response?.data?.detail ? 
+               `AI Validation error: ${JSON.stringify(error.response.data.detail)}` :
+               error.message || 'Terjadi kesalahan pada analisis AI',
+      status: error.response?.status || 500,
+      errors: error.response?.data?.errors,
+    };
+    
+    return Promise.reject(apiError);
+  }
+);
+
 // Helper functions for different HTTP methods
 export const apiClient = {
   get: <T = any>(url: string, config?: AxiosRequestConfig): Promise<T> =>
@@ -126,6 +208,10 @@ export const apiClient = {
     
   delete: <T = any>(url: string, config?: AxiosRequestConfig): Promise<T> =>
     api.delete(url, config).then(response => response.data),
+    
+  // AI Analysis with extended timeout
+  aiAnalysis: <T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> =>
+    aiApi.post(url, data, config).then(response => response.data),
     
   // Upload file helper
   uploadFile: <T = any>(url: string, file: File, additionalData?: Record<string, any>): Promise<T> => {

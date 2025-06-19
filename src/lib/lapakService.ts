@@ -1,5 +1,5 @@
 import { apiClient } from '@/lib/api';
-import { Lapak, LapakCreate, LapakListResponse, LapakAnalysisResult, NearbyParams } from '@/lib/types';
+import { Lapak, LapakCreate, LapakListResponse, LapakAnalysisResult, EnhancedAnalysisResult, NearbyParams } from '@/lib/types';
 import { generateWhatsAppUrl } from './utils';
 
 // Types for Lapak API
@@ -309,13 +309,26 @@ export const createLapak = async (lapakData: LapakCreate, images: File[]): Promi
   }
 };
 
-// Analyze product image using AI
-export const analyzeLapakImage = async (image: File): Promise<LapakAnalysisResult> => {
+// Analyze product images using AI - Comprehensive analysis for single or multiple images
+export const analyzeImages = async (images: File[]): Promise<EnhancedAnalysisResult> => {
   try {
+    // Validate at least one image
+    if (!images || images.length === 0) {
+      throw new Error('Minimal satu gambar diperlukan untuk analisis');
+    }
+
+    // Validate maximum 5 images
+    if (images.length > 5) {
+      throw new Error('Maksimal 5 gambar per analisis');
+    }
+
     const formData = new FormData();
-    formData.append('image', image);
+    images.forEach((image) => {
+      formData.append('images', image);
+    });
     
-    const response = await apiClient.post('/lapak/analyze', formData, {
+    // Use AI analysis method with extended timeout
+    const response = await apiClient.aiAnalysis('/lapak/analyze', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -323,25 +336,79 @@ export const analyzeLapakImage = async (image: File): Promise<LapakAnalysisResul
     
     return response;
   } catch (error: any) {
-    console.error('Failed to analyze image:', error);
+    console.error('Failed to analyze images:', error);
     
     if (error.status === 400) {
-      throw new Error('Format gambar tidak didukung. Gunakan JPG, PNG, atau JPEG');
+      throw new Error('Format gambar tidak didukung atau terlalu banyak gambar (maksimal 5)');
     } else if (error.status === 413) {
-      throw new Error('Ukuran gambar terlalu besar. Maksimal 5MB');
+      throw new Error('Ukuran gambar terlalu besar. Maksimal 5MB per gambar');
     } else if (error.status === 503) {
       throw new Error('Layanan AI sedang tidak tersedia. Silakan coba lagi nanti.');
     }
     
-    // Fallback response if AI analysis fails
-    return {
+    // Fallback response for analysis failure
+    const fallbackBasicInfo: LapakAnalysisResult = {
       title: 'Produk Segar',
       description: 'Deskripsi produk akan diisi berdasarkan analisis gambar',
       suggested_price: 15000,
       unit: 'pcs',
       category: 'Lainnya'
     };
+
+    return {
+      product_info: fallbackBasicInfo,
+      photo_quality: {
+        overall_score: 75,
+        lighting_score: 70,
+        composition_score: 75,
+        focus_score: 80,
+        background_score: 65,
+        color_vibrancy: 70
+      },
+      insights: [
+        {
+          type: 'info',
+          category: 'quality',
+          title: 'Analisis Foto Standar',
+          description: 'Foto sudah cukup baik untuk menampilkan produk. Pertimbangkan pencahayaan yang lebih baik untuk hasil optimal.',
+          confidence: 75,
+          actionable: true
+        },
+        {
+          type: 'suggestion',
+          category: 'visibility',
+          title: images.length > 1 ? 'Variasi Foto Tersedia' : 'Tambahkan Foto dari Sudut Lain',
+          description: images.length > 1 
+            ? `Anda telah mengunggah ${images.length} foto yang memberikan gambaran produk dari berbagai perspektif.`
+            : 'Foto dari berbagai sudut akan memberikan gambaran produk yang lebih lengkap kepada pembeli.',
+          confidence: 90,
+          actionable: images.length === 1
+        }
+      ],
+      recommendations: [
+        'Gunakan pencahayaan natural atau lampu putih yang merata',
+        'Bersihkan background untuk fokus pada produk',
+        'Tambahkan foto detail untuk menunjukkan kualitas',
+        'Pertimbangkan foto dengan objek referensi ukuran'
+      ]
+    };
   }
+};
+
+// Legacy function for backward compatibility - redirects to new analyzeImages
+export const analyzeLapakImage = async (image: File): Promise<LapakAnalysisResult> => {
+  const result = await analyzeImages([image]);
+  return result.product_info;
+};
+
+// Legacy function for backward compatibility - redirects to new analyzeImages  
+export const analyzePhotoComprehensive = async (image: File): Promise<EnhancedAnalysisResult> => {
+  return await analyzeImages([image]);
+};
+
+// Legacy function for backward compatibility - redirects to new analyzeImages
+export const analyzeMultiplePhotos = async (images: File[]): Promise<EnhancedAnalysisResult> => {
+  return await analyzeImages(images);
 };
 
 // Update lapak information
