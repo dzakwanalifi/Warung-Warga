@@ -37,86 +37,191 @@ const analyzeImages = async (images: File[], productName?: string): Promise<AIIn
   await new Promise(resolve => setTimeout(resolve, 1500));
   
   const insights: AIInsight[] = [];
+  const imageCount = images.length;
+  const hasProductName = productName && productName.trim().length > 0;
   
-  if (images.length === 0) {
-    return [];
-  }
-
-  // Quality insights
-  if (images.length >= 1) {
+  // Generate insights based on image count and product name availability
+  if (imageCount === 0) {
     insights.push({
-      id: 'image-quality',
-      type: 'success',
-      category: 'quality',
-      title: 'Kualitas Foto Baik',
-      description: 'Foto produk memiliki resolusi dan pencahayaan yang cukup baik',
-      confidence: 85,
-      actionable: false
+      id: 'no-images',
+      type: 'warning',
+      category: 'visibility',
+      title: 'Foto Produk Diperlukan',
+      description: 'Tambahkan foto untuk mendapatkan analisis AI yang komprehensif',
+      confidence: 100,
+      actionable: true
     });
+    return insights;
   }
 
-  // Visibility insights
-  if (images.length === 1) {
+  // Basic image quality insights (always available)
+  insights.push({
+    id: 'image-quality',
+    type: 'success',
+    category: 'quality',
+    title: 'Kualitas Foto Baik',
+    description: `${imageCount} foto terunggah dengan kualitas yang memadai untuk menampilkan produk`,
+    confidence: 85,
+    actionable: false
+  });
+
+  // Image count based insights
+  if (imageCount === 1) {
     insights.push({
-      id: 'multiple-angles',
+      id: 'more-angles',
       type: 'suggestion',
       category: 'visibility',
       title: 'Tambahkan Sudut Pandang Lain',
       description: 'Foto dari berbagai sudut dapat meningkatkan kepercayaan pembeli hingga 40%',
-      confidence: 92,
+      confidence: 90,
       actionable: true
     });
-  }
-
-  if (images.length >= 3) {
+  } else if (imageCount >= 2) {
     insights.push({
       id: 'good-coverage',
       type: 'success',
       category: 'visibility',
       title: 'Cakupan Visual Lengkap',
-      description: 'Anda memiliki cukup foto untuk menunjukkan produk secara menyeluruh',
-      confidence: 88,
+      description: `${imageCount} foto memberikan gambaran produk yang komprehensif`,
+      confidence: 95,
       actionable: false
     });
   }
 
-  // Appeal insights based on product name
-  if (productName) {
-    if (productName.toLowerCase().includes('segar') || productName.toLowerCase().includes('sayur')) {
+  if (!hasProductName) {
+    // Generic insights when product name is not available
+    insights.push({
+      id: 'generic-appeal',
+      type: 'info',
+      category: 'appeal',
+      title: 'Siap untuk Analisis Mendalam',
+      description: 'Tambahkan nama produk untuk mendapatkan rekomendasi yang lebih spesifik dan personal',
+      confidence: 80,
+      actionable: true
+    });
+
+    insights.push({
+      id: 'generic-optimization',
+      type: 'suggestion',
+      category: 'optimization',
+      title: 'Potensi Optimisasi Tersedia',
+      description: 'Dengan informasi produk lengkap, AI dapat memberikan saran optimisasi yang lebih baik',
+      confidence: 75,
+      actionable: true
+    });
+  } else {
+    // Product name specific insights
+    const nameWords = productName.toLowerCase().split(' ');
+    
+    // Analyze product characteristics
+    const isOrganic = nameWords.some(word => ['organik', 'organic', 'alami', 'natural'].includes(word));
+    const isFresh = nameWords.some(word => ['segar', 'fresh', 'baru'].includes(word));
+    const isPremium = nameWords.some(word => ['premium', 'super', 'grade', 'kualitas'].includes(word));
+    const isHomemade = nameWords.some(word => ['rumahan', 'buatan', 'homemade', 'tradisional'].includes(word));
+    const isLarge = nameWords.some(word => ['besar', 'jumbo', 'large', 'xl'].includes(word));
+    
+    // Product type detection
+    const isRice = nameWords.some(word => ['beras', 'rice'].includes(word));
+    const isVegetable = nameWords.some(word => ['sayur', 'vegetable', 'kangkung', 'bayam', 'sawi', 'cabai', 'tomat'].includes(word));
+    const isFruit = nameWords.some(word => ['buah', 'fruit', 'apel', 'jeruk', 'pisang', 'mangga', 'anggur'].includes(word));
+    const isDrink = nameWords.some(word => ['jus', 'juice', 'minuman', 'drink', 'kopi', 'teh'].includes(word));
+    const isCake = nameWords.some(word => ['kue', 'cake', 'roti', 'cookies'].includes(word));
+    const isSpice = nameWords.some(word => ['bumbu', 'rempah', 'garam', 'gula', 'merica'].includes(word));
+
+    // Product-specific appeal insights
+    if (isFresh || isVegetable || isFruit) {
       insights.push({
         id: 'freshness-appeal',
-        type: 'info',
+        type: 'success',
         category: 'appeal',
-        title: 'Tonjolkan Kesegaran',
-        description: 'Pastikan foto menampilkan kesegaran produk dengan pencahayaan alami',
+        title: 'Emphasize Kesegaran',
+        description: 'Produk segar memiliki daya tarik tinggi. Pastikan foto menunjukkan kondisi produk yang prima',
+        confidence: 95,
+        actionable: true
+      });
+    } else if (isCake || nameWords.some(word => ['kue', 'makanan'].includes(word))) {
+      insights.push({
+        id: 'food-appeal',
+        type: 'suggestion',
+        category: 'appeal',
+        title: 'Tingkatkan Food Appeal',
+        description: 'Foto makanan dengan pencahayaan yang baik dapat meningkatkan minat beli hingga 60%',
+        confidence: 88,
+        actionable: true
+      });
+    } else if (isDrink) {
+      insights.push({
+        id: 'drink-appeal',
+        type: 'suggestion',
+        category: 'appeal',
+        title: 'Tampilkan Kesegaran Minuman',
+        description: 'Foto dengan efek segar (condensation, es) membuat minuman terlihat lebih menarik',
+        confidence: 85,
+        actionable: true
+      });
+    }
+
+    // Characteristic-based insights
+    if (isOrganic) {
+      insights.push({
+        id: 'organic-highlight',
+        type: 'success',
+        category: 'appeal',
+        title: 'Highlight Aspek Organik',
+        description: 'Produk organik memiliki nilai premium. Tekankan sertifikasi dan kealamian produk',
+        confidence: 92,
+        actionable: true
+      });
+    }
+
+    if (isHomemade) {
+      insights.push({
+        id: 'homemade-appeal',
+        type: 'success',
+        category: 'appeal',
+        title: 'Autentisitas Rumahan',
+        description: 'Produk rumahan memiliki daya tarik personal. Ceritakan proses pembuatan yang unik',
+        confidence: 88,
+        actionable: true
+      });
+    }
+
+    if (isPremium) {
+      insights.push({
+        id: 'premium-positioning',
+        type: 'info',
+        category: 'optimization',
+        title: 'Posisi Premium Detected',
+        description: 'Produk premium memerlukan presentasi yang berkelas. Fokus pada kualitas dan eksklusivitas',
         confidence: 90,
         actionable: true
       });
     }
 
-    if (productName.toLowerCase().includes('kue') || productName.toLowerCase().includes('makanan')) {
+    // Optimization insights
+    if (imageCount >= 2) {
       insights.push({
-        id: 'food-appeal',
-        type: 'suggestion',
-        category: 'appeal',
-        title: 'Tampilan yang Menggugah Selera',
-        description: 'Foto makanan dengan latar belakang bersih dapat meningkatkan daya tarik',
+        id: 'market-potential',
+        type: 'success',
+        category: 'optimization',
+        title: 'Potensi Pasar Tinggi',
+        description: 'Dengan foto berkualitas dan informasi lengkap, produk ini memiliki potensi penjualan yang baik',
         confidence: 87,
-        actionable: true
+        actionable: false
       });
     }
   }
 
-  // Optimization insights
-  if (images.length >= 2) {
+  // Actionable recommendations
+  if (imageCount < 3) {
     insights.push({
-      id: 'market-potential',
-      type: 'info',
-      category: 'optimization',
-      title: 'Potensi Pasar Bagus',
-      description: 'Produk dengan foto berkualitas memiliki tingkat penjualan 3x lebih tinggi',
-      confidence: 95,
-      actionable: false
+      id: 'add-detail-shots',
+      type: 'suggestion',
+      category: 'visibility',
+      title: 'Tambahkan Foto Detail',
+      description: 'Foto close-up, kemasan, dan detail produk dapat meningkatkan konversi penjualan',
+      confidence: 83,
+      actionable: true
     });
   }
 

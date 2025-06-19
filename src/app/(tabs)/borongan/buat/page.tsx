@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/hooks/useAuthStore';
 import { ClientOnly } from '@/components/ClientOnly';
+import { createBorongan } from '@/lib/boronganService';
 
 interface BoronganForm {
   title: string;
@@ -71,14 +72,26 @@ function MultiStepForm() {
     setIsSubmitting(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Prepare borongan data for API
+      const boronganData = {
+        title: formData.title,
+        description: formData.description,
+        target_quantity: formData.target_quantity,
+        price_per_unit: formData.target_price,
+        original_price_per_unit: formData.original_price > 0 ? formData.original_price : undefined,
+        deadline: formData.deadline,
+        status: 'active' as const,
+        created_by: 'current-user-id' // TODO: Get from auth store
+      };
       
-      alert('Borongan berhasil dibuat!');
+      // Create borongan using service
+      const newBorongan = await createBorongan(boronganData);
+      
+      alert(`Borongan "${newBorongan.title}" berhasil dibuat!`);
       router.push('/borongan');
     } catch (error) {
       console.error('Error creating borongan:', error);
-      alert('Gagal membuat borongan. Silakan coba lagi.');
+      alert(error instanceof Error ? error.message : 'Gagal membuat borongan. Silakan coba lagi.');
     } finally {
       setIsSubmitting(false);
     }

@@ -41,59 +41,153 @@ interface PriceRecommendationProps {
 
 // Mock market analysis function
 const analyzeMarket = async (productName: string, category: string): Promise<{ recommendations: PriceRecommendation[], marketData: MarketData }> => {
-  // Simulate API delay
+  // Simulate market analysis delay
   await new Promise(resolve => setTimeout(resolve, 1200));
   
-  // Generate mock market data based on category
-  const categoryMultipliers: Record<string, { base: number, variance: number }> = {
-    'makanan': { base: 15000, variance: 8000 },
-    'sayuran': { base: 8000, variance: 4000 },
-    'buah': { base: 12000, variance: 6000 },
-    'minuman': { base: 5000, variance: 3000 },
-    'kue': { base: 20000, variance: 10000 },
-    'produk-kebun': { base: 10000, variance: 5000 },
-    'lainnya': { base: 15000, variance: 8000 }
-  };
-
-  const multiplier = categoryMultipliers[category] || categoryMultipliers['lainnya'];
-  const basePrice = multiplier.base;
-  const variance = multiplier.variance;
-
+  const hasProductName = productName && productName.trim().length > 0;
+  const hasCategory = category && category.length > 0;
+  
+  let basePrice = 15000; // Default base price
+  let variance = 5000; // Default variance
+  
+  // If we have category, adjust base pricing accordingly
+  if (hasCategory) {
+    switch (category) {
+      case 'makanan-minuman':
+        basePrice = 25000;
+        variance = 8000;
+        break;
+      case 'sayuran':
+        basePrice = 8000;
+        variance = 3000;
+        break;
+      case 'buah-buahan':
+        basePrice = 12000;
+        variance = 5000;
+        break;
+      case 'sembako':
+        basePrice = 35000;
+        variance = 15000;
+        break;
+      case 'snack-cemilan':
+        basePrice = 18000;
+        variance = 6000;
+        break;
+      case 'bumbu-rempah':
+        basePrice = 10000;
+        variance = 4000;
+        break;
+      case 'minuman':
+        basePrice = 8000;
+        variance = 3000;
+        break;
+      default:
+        basePrice = 20000;
+        variance = 8000;
+    }
+  }
+  
+  let productMultiplier = 1;
+  let productType = 'general';
+  
+  if (hasProductName) {
+    // Analyze product name for characteristics and pricing modifiers
+    const nameWords = productName.toLowerCase().split(' ');
+    const isOrganic = nameWords.some(word => ['organik', 'organic', 'alami', 'natural'].includes(word));
+    const isFresh = nameWords.some(word => ['segar', 'fresh', 'baru'].includes(word));
+    const isPremium = nameWords.some(word => ['premium', 'super', 'grade', 'kualitas'].includes(word));
+    const isHomemade = nameWords.some(word => ['rumahan', 'buatan', 'homemade', 'tradisional'].includes(word));
+    const isLarge = nameWords.some(word => ['besar', 'jumbo', 'large', 'xl'].includes(word));
+    
+    // Detect specific product types for more accurate pricing
+    const isRice = nameWords.some(word => ['beras', 'rice'].includes(word));
+    const isVegetable = nameWords.some(word => ['sayur', 'kangkung', 'bayam', 'sawi', 'cabai', 'tomat'].includes(word));
+    const isFruit = nameWords.some(word => ['buah', 'apel', 'jeruk', 'pisang', 'mangga', 'anggur'].includes(word));
+    const isDrink = nameWords.some(word => ['jus', 'juice', 'minuman', 'kopi', 'teh'].includes(word));
+    const isCake = nameWords.some(word => ['kue', 'cake', 'roti', 'cookies'].includes(word));
+    const isSpice = nameWords.some(word => ['bumbu', 'rempah', 'garam', 'gula', 'merica'].includes(word));
+    
+    // Specific product type pricing
+    if (isRice) {
+      basePrice = 60000; // Per 5kg
+      variance = 20000;
+      productType = 'rice';
+    } else if (isVegetable) {
+      basePrice = 6000; // Per kg
+      variance = 3000;
+      productType = 'vegetable';
+    } else if (isFruit) {
+      basePrice = 15000; // Per kg
+      variance = 7000;
+      productType = 'fruit';
+    } else if (isDrink) {
+      basePrice = 12000; // Per bottle/cup
+      variance = 5000;
+      productType = 'drink';
+    } else if (isCake) {
+      basePrice = 25000; // Per piece/box
+      variance = 10000;
+      productType = 'cake';
+    } else if (isSpice) {
+      basePrice = 8000; // Per pack
+      variance = 4000;
+      productType = 'spice';
+    }
+    
+    // Apply characteristic modifiers
+    if (isOrganic) productMultiplier *= 1.3;
+    if (isPremium) productMultiplier *= 1.4;
+    if (isHomemade) productMultiplier *= 1.2;
+    if (isLarge) productMultiplier *= 1.5;
+    if (isFresh && (isVegetable || isFruit)) productMultiplier *= 1.1;
+  }
+  
+  const adjustedBasePrice = Math.round(basePrice * productMultiplier);
+  const adjustedVariance = Math.round(variance * productMultiplier);
+  
+  // Generate market data
   const marketData: MarketData = {
-    averagePrice: basePrice,
-    minPrice: basePrice - variance,
-    maxPrice: basePrice + variance,
+    averagePrice: adjustedBasePrice,
+    minPrice: Math.max(1000, adjustedBasePrice - adjustedVariance),
+    maxPrice: adjustedBasePrice + adjustedVariance,
     competitorCount: Math.floor(Math.random() * 15) + 5,
-    trend: ['increasing', 'decreasing', 'stable'][Math.floor(Math.random() * 3)] as any
+    trend: ['increasing', 'decreasing', 'stable'][Math.floor(Math.random() * 3)] as 'increasing' | 'decreasing' | 'stable'
   };
-
+  
+  // Generate price recommendations
   const recommendations: PriceRecommendation[] = [
     {
       id: 'competitive',
-      price: Math.round(marketData.averagePrice * 0.95),
-      confidence: 88,
-      reason: 'Harga kompetitif yang menarik untuk pembeli namun tetap menguntungkan',
+      price: adjustedBasePrice,
+      confidence: hasProductName ? 85 : 70,
+      reason: hasProductName 
+        ? `Harga sesuai dengan karakteristik ${productName} dan kondisi pasar saat ini`
+        : `Harga kompetitif berdasarkan analisis kategori ${hasCategory ? category : 'umum'}`,
       trend: 'stable',
       marketPosition: 'competitive'
     },
     {
       id: 'premium',
-      price: Math.round(marketData.averagePrice * 1.15),
-      confidence: 75,
-      reason: 'Harga premium untuk produk berkualitas tinggi dengan nilai tambah',
+      price: Math.round(adjustedBasePrice * 1.25),
+      confidence: hasProductName ? 78 : 65,
+      reason: hasProductName 
+        ? `Pricing premium untuk ${productName} dengan fokus pada kualitas dan eksklusivitas`
+        : `Strategi premium dengan margin lebih tinggi untuk produk berkualitas`,
       trend: 'up',
       marketPosition: 'premium'
     },
     {
       id: 'budget',
-      price: Math.round(marketData.averagePrice * 0.85),
-      confidence: 92,
-      reason: 'Harga terjangkau untuk menarik lebih banyak pembeli dan penjualan cepat',
+      price: Math.round(adjustedBasePrice * 0.8),
+      confidence: hasProductName ? 82 : 68,
+      reason: hasProductName 
+        ? `Harga terjangkau untuk ${productName} guna menarik lebih banyak pembeli`
+        : `Pricing agresif untuk penetrasi pasar dan volume penjualan tinggi`,
       trend: 'down',
       marketPosition: 'budget'
     }
   ];
-
+  
   return { recommendations, marketData };
 };
 

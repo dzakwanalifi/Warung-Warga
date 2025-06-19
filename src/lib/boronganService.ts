@@ -242,10 +242,12 @@ export const getMockBoronganList = (): BoronganItem[] => {
 // Fetch all borongan
 export const getBoronganList = async (): Promise<BoronganItem[]> => {
   try {
-    const response = await apiClient.get<BoronganItem[]>('/borongan');
-    return response || getMockBoronganList();
+    console.log('🚀 Calling API: GET /api/borongan');
+    const response = await apiClient.get<BoronganItem[]>('/api/borongan');
+    console.log('✅ API Response received:', response);
+    return response;
   } catch (error) {
-    console.error('Error fetching borongan list:', error);
+    console.warn('⚠️ API call failed, using mock data:', error);
     return getMockBoronganList();
   }
 };
@@ -253,11 +255,13 @@ export const getBoronganList = async (): Promise<BoronganItem[]> => {
 // Fetch borongan detail by ID
 export const getBoronganDetail = async (id: string): Promise<BoronganDetail | null> => {
   try {
-    const response = await apiClient.get<BoronganDetail>(`/borongan/${id}`);
-    return response || null;
+    console.log(`🚀 Calling API: GET /api/borongan/${id}`);
+    const response = await apiClient.get<BoronganDetail>(`/api/borongan/${id}`);
+    console.log('✅ API Response received:', response);
+    return response;
   } catch (error) {
-    console.error('Error fetching borongan detail:', error);
-    return null;
+    console.warn('⚠️ API call failed, using mock data:', error);
+    return getMockBoronganDetail(id);
   }
 };
 
@@ -458,4 +462,115 @@ export const getMockBoronganDetail = (id: string): BoronganDetail => {
       }
     ]
   };
+};
+
+// UPDATE borongan
+export const updateBorongan = async (id: string, updates: Partial<BoronganItem>): Promise<BoronganItem | null> => {
+  try {
+    const response = await apiClient.put<BoronganItem>(`/borongan/${id}`, updates);
+    return response || null;
+  } catch (error) {
+    console.error('Error updating borongan:', error);
+    
+    // For development/MVP, simulate update with mock data
+    const mockList = getMockBoronganList();
+    const existingBorongan = mockList.find(item => item.id === id);
+    
+    if (existingBorongan) {
+      const updatedBorongan = {
+        ...existingBorongan,
+        ...updates,
+        updated_at: new Date().toISOString()
+      };
+      
+      // Simulate successful update
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return updatedBorongan;
+    }
+    
+    throw new Error('Borongan tidak ditemukan');
+  }
+};
+
+// DELETE borongan
+export const deleteBorongan = async (id: string): Promise<boolean> => {
+  try {
+    await apiClient.delete(`/borongan/${id}`);
+    return true;
+  } catch (error) {
+    console.error('Error deleting borongan:', error);
+    
+    // For development/MVP, simulate deletion
+    const mockList = getMockBoronganList();
+    const exists = mockList.some(item => item.id === id);
+    
+    if (exists) {
+      // Simulate successful deletion
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return true;
+    }
+    
+    throw new Error('Borongan tidak ditemukan');
+  }
+};
+
+// CREATE borongan
+export const createBorongan = async (boronganData: Omit<BoronganItem, 'id' | 'created_at' | 'updated_at' | 'current_quantity' | 'participants_count'>): Promise<BoronganItem> => {
+  try {
+    console.log('🚀 Calling API: POST /api/borongan', boronganData);
+    const response = await apiClient.post<BoronganItem>('/api/borongan', boronganData);
+    console.log('✅ Borongan created successfully:', response);
+    return response;
+  } catch (error) {
+    console.error('❌ Error creating borongan via API:', error);
+    
+    // For development/MVP, simulate creation with mock data as fallback
+    console.warn('⚠️ Using mock creation as fallback');
+    const newBorongan: BoronganItem = {
+      ...boronganData,
+      id: `brg${Date.now()}`,
+      current_quantity: 0,
+      participants_count: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    return newBorongan;
+  }
+};
+
+// JOIN borongan
+export const joinBorongan = async (id: string, quantity: number = 1): Promise<boolean> => {
+  try {
+    console.log(`🚀 Calling API: POST /api/borongan/${id}/join`, { quantity });
+    await apiClient.post(`/api/borongan/${id}/join`, { quantity });
+    console.log('✅ Successfully joined borongan');
+    return true;
+  } catch (error) {
+    console.error('❌ Error joining borongan via API:', error);
+    
+    // For development/MVP, simulate join as fallback
+    console.warn('⚠️ Using mock join as fallback');
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    return true;
+  }
+};
+
+// LEAVE borongan
+export const leaveBorongan = async (id: string): Promise<boolean> => {
+  try {
+    console.log(`🚀 Calling API: POST /api/borongan/${id}/leave`);
+    await apiClient.post(`/api/borongan/${id}/leave`);
+    console.log('✅ Successfully left borongan');
+    return true;
+  } catch (error) {
+    console.error('❌ Error leaving borongan via API:', error);
+    
+    // For development/MVP, simulate leave as fallback
+    console.warn('⚠️ Using mock leave as fallback');
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    return true;
+  }
 }; 

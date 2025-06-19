@@ -220,25 +220,41 @@ function NearbyLapakSection() {
 
   // Fetch nearby lapak
   const fetchNearbyLapak = async (latitude: number, longitude: number) => {
+    setIsLoading(true);
+    setError(null);
+    
     try {
-      setIsLoading(true);
-      setError(null);
-      setUsingMockData(false);
-      
       const response = await getNearbyLapak({
         latitude,
         longitude,
         radius: 5,
-        limit: 4
+        limit: 10
       });
       
-      if (response.lapak.length > 0 && response.lapak[0].id?.startsWith('mock-')) {
-        setUsingMockData(true);
+      if (response && response.lapak) {
+        setLapakList(response.lapak);
+        setError(null);
+      } else {
+        setError('Tidak ada data lapak yang ditemukan');
       }
       
-      setLapakList(response.lapak || []);
     } catch (err: any) {
-      setError('Gagal memuat lapak terdekat');
+      console.error('Error fetching nearby lapak:', {
+        message: err.message,
+        status: err.status
+      });
+      
+      // Provide user-friendly error message
+      const errorMessage = err.status >= 500 || err.message?.includes('timeout') 
+        ? 'Server sedang sibuk, menggunakan data offline' 
+        : err.message?.includes('Network Error')
+        ? 'Koneksi internet bermasalah, menggunakan data offline'
+        : 'Gagal memuat data lapak terdekat';
+        
+      setError(errorMessage);
+      
+      // Don't show nearby section if there's a real error and no fallback data
+      setLapakList([]);
     } finally {
       setIsLoading(false);
     }

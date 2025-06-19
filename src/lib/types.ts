@@ -79,8 +79,9 @@ export interface LapakUpdate {
 export interface LapakAnalysisResult {
   title: string;
   description: string;
-  price?: number;
+  suggested_price?: number;
   unit: string;
+  category?: string;
 }
 
 export interface LapakListResponse {
