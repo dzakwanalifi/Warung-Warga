@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, Check, Calendar, MapPin, Users, Package, Target } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/hooks/useAuthStore';
 import { ClientOnly } from '@/components/ClientOnly';
 import { createBorongan } from '@/lib/boronganService';
+import { getCurrentUser } from '@/lib/authService';
+import { User } from '@/lib/types';
 
 interface BoronganForm {
   title: string;
@@ -40,8 +42,11 @@ const UNITS = [
 
 function MultiStepForm() {
   const router = useRouter();
+  const { user, isAuthenticated, isHydrated } = useAuthStore();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingUser, setIsLoadingUser] = useState(true);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   
   const [formData, setFormData] = useState<BoronganForm>({
     title: '',
@@ -63,26 +68,83 @@ function MultiStepForm() {
     ]
   });
 
+  // Check authentication on component mount - improved with Zustand store
+  useEffect(() => {
+    if (!isHydrated) return; // Wait for Zustand hydration
+
+    const checkAuth = async () => {
+      try {
+        // First check Zustand store
+        if (isAuthenticated && user) {
+          setCurrentUser(user);
+          setIsLoadingUser(false);
+          return;
+        }
+
+        // If not authenticated in store, check localStorage and API
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+          alert('Anda harus login terlebih dahulu untuk membuat borongan');
+          router.push('/login');
+          return;
+        }
+
+        // Try to get current user from API
+        const apiUser = await getCurrentUser();
+        setCurrentUser(apiUser);
+        
+        // Update Zustand store if API call succeeds but store is not updated
+        const { loginAction } = useAuthStore.getState();
+        loginAction(apiUser, token);
+        
+      } catch (error) {
+        console.error('Authentication check failed:', error);
+        // Clear invalid token
+        localStorage.removeItem('access_token');
+        const { logoutAction } = useAuthStore.getState();
+        logoutAction();
+        
+        alert('Sesi telah berakhir. Silakan login kembali');
+        router.push('/login');
+      } finally {
+        setIsLoadingUser(false);
+      }
+    };
+
+    checkAuth();
+  }, [router, isAuthenticated, user, isHydrated]);
+
   const handleInputChange = (field: keyof BoronganForm, value: string | number | string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!currentUser) {
+      alert('Anda harus login terlebih dahulu');
+      router.push('/login');
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
-      // Prepare borongan data for API
+      // Prepare data for API call according to backend schema
       const boronganData = {
         title: formData.title,
         description: formData.description,
+        product_type: formData.product_type,
         target_quantity: formData.target_quantity,
         price_per_unit: formData.target_price,
-        original_price_per_unit: formData.original_price > 0 ? formData.original_price : undefined,
+        unit: formData.unit,
+        pickup_point_address: formData.pickup_location,
         deadline: formData.deadline,
-        status: 'active' as const,
-        created_by: 'current-user-id' // TODO: Get from auth store
+        // Backend will automatically set created_by from authenticated user
       };
+      
+      console.log('🚀 Sending borongan data:', boronganData);
+      console.log('👤 Current user:', currentUser.id);
       
       // Create borongan using service
       const newBorongan = await createBorongan(boronganData);
@@ -91,7 +153,20 @@ function MultiStepForm() {
       router.push('/borongan');
     } catch (error) {
       console.error('Error creating borongan:', error);
-      alert(error instanceof Error ? error.message : 'Gagal membuat borongan. Silakan coba lagi.');
+      
+      // Provide more specific error messages
+      if (error instanceof Error) {
+        if (error.message.includes('422')) {
+          alert('Data yang dikirim tidak valid. Periksa kembali semua field yang wajib diisi.');
+        } else if (error.message.includes('401')) {
+          alert('Sesi telah berakhir. Silakan login kembali');
+          router.push('/login');
+        } else {
+          alert(error.message);
+        }
+      } else {
+        alert('Gagal membuat borongan. Silakan coba lagi.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -515,6 +590,40 @@ function MultiStepForm() {
       </div>
     </div>
   );
+
+  // Show loading state while checking authentication
+  if (isLoadingUser) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-text-secondary">Memuat...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Render authentication error if user not found
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-heading-1 font-bold text-text-primary mb-4">
+            Akses Ditolak
+          </h1>
+          <p className="text-body text-text-secondary mb-6">
+            Anda harus login terlebih dahulu untuk membuat borongan.
+          </p>
+          <button
+            onClick={() => router.push('/login')}
+            className="btn-primary"
+          >
+            Login Sekarang
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

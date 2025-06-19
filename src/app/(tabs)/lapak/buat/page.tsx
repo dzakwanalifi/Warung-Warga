@@ -1,15 +1,18 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Sparkles, Camera, MapPin, Package, DollarSign, FileText, Tag } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { ImageUploader } from '@/components/ImageUploader';
-import { ToastContainer, useToast } from '@/components/Toast';
+import { useToast, ToastContainer } from '@/components/Toast';
 import { AIInsights } from '@/components/AIInsights';
 import { PriceRecommendation } from '@/components/PriceRecommendation';
 import { cn } from '@/lib/utils';
-import { createLapak, analyzeImages } from '@/lib/lapakService';
+import { createLapak, analyzeImages, analyzeLapakImage } from '@/lib/lapakService';
+import { getCurrentUser } from '@/lib/authService';
+import { User } from '@/lib/types';
+import { useAuthStore } from '@/hooks/useAuthStore';
 
 // Category options
 const CATEGORIES = [
@@ -38,6 +41,14 @@ export default function BukaLapakPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isLoadingUser, setIsLoadingUser] = useState(true);
+  const { isAuthenticated, user, isHydrated } = useAuthStore();
+  
+  // Add location state
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locationPermission, setLocationPermission] = useState<'granted' | 'denied' | 'prompt'>('prompt');
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
   
   const [formData, setFormData] = useState<FormData>({
     title: '',
@@ -49,6 +60,41 @@ export default function BukaLapakPage() {
   });
 
   const [errors, setErrors] = useState<Partial<FormData>>({});
+
+  // Get user location for lapak positioning
+  const requestLocation = async () => {
+    if (!navigator.geolocation) {
+      toast.warning('Geolocation tidak didukung', 'Browser Anda tidak mendukung fitur lokasi');
+      return;
+    }
+
+    setIsGettingLocation(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setUserLocation({ latitude, longitude });
+        setLocationPermission('granted');
+        setIsGettingLocation(false);
+        toast.success('Lokasi berhasil dideteksi', 'Lokasi Anda akan digunakan untuk lapak');
+      },
+      (error) => {
+        setLocationPermission('denied');
+        setIsGettingLocation(false);
+        toast.warning('Akses lokasi ditolak', 'Lapak akan dibuat tanpa koordinat lokasi yang akurat');
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 300000
+      }
+    );
+  };
+
+  // Request location on component mount
+  useEffect(() => {
+    requestLocation();
+  }, []);
 
   // Handle form input changes
   const handleInputChange = (field: keyof FormData, value: string) => {
@@ -492,6 +538,14 @@ export default function BukaLapakPage() {
     return description;
   };
 
+  // Sanitize input to remove problematic characters for the backend
+  const sanitizeForBackend = (str: string): string => {
+    // This regex removes characters that are not in the standard printable ASCII range,
+    // which should strip out emojis and other complex symbols that the backend might not handle.
+    // eslint-disable-next-line no-control-regex
+    return str.replace(/[^\x20-\x7E\n\r\t]/g, '');
+  };
+
   // Handle AI insight clicks
   const handleInsightClick = (insight: any) => {
     toast.info(insight.title, insight.description);
@@ -544,44 +598,135 @@ export default function BukaLapakPage() {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Check authentication on component mount - improved with Zustand store
+  useEffect(() => {
+    if (!isHydrated) return; // Wait for Zustand hydration
+
+    const checkAuth = async () => {
+      try {
+        // First check Zustand store
+        if (isAuthenticated && user) {
+          setCurrentUser(user);
+          setIsLoadingUser(false);
+          return;
+        }
+
+        // If not authenticated in store, check localStorage and API
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+          alert('Anda harus login terlebih dahulu untuk membuat lapak');
+          router.push('/login');
+          return;
+        }
+
+        // Try to get current user from API
+        const apiUser = await getCurrentUser();
+        setCurrentUser(apiUser);
+        
+        // Update Zustand store if API call succeeds but store is not updated
+        const { loginAction } = useAuthStore.getState();
+        loginAction(apiUser, token);
+        
+      } catch (error) {
+        console.error('Authentication check failed:', error);
+        // Clear invalid token
+        localStorage.removeItem('access_token');
+        const { logoutAction } = useAuthStore.getState();
+        logoutAction();
+        
+        alert('Sesi telah berakhir. Silakan login kembali');
+        router.push('/login');
+      } finally {
+        setIsLoadingUser(false);
+      }
+    };
+
+    checkAuth();
+  }, [router, isAuthenticated, user, isHydrated]);
+
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm()) {
+    if (!validateForm()) return;
+
+    // Check authentication before submission
+    if (!currentUser) {
+      alert('Anda harus login terlebih dahulu');
+      router.push('/login');
       return;
     }
 
     setIsSubmitting(true);
-    toast.info('Menyimpan Produk', 'Sedang menambahkan produk ke lapak Anda...');
+    toast.info('Sedang menyimpan produk...');
 
     try {
-      // Prepare lapak data for API
       const lapakData = {
         title: formData.title,
-        description: formData.description,
-        price: Number(formData.price),
-        unit: 'pcs', // Default unit, could be made configurable
-        stock_quantity: Number(formData.stock)
+        description: sanitizeForBackend(formData.description),
+        price: parseFloat(formData.price),
+        unit: 'pcs', // You might want to make this configurable
+        stock_quantity: parseInt(formData.stock),
+        category: selectedCategory,
+        location: formData.location,
+        // Include location coordinates if available
+        ...(userLocation && {
+          latitude: userLocation.latitude,
+          longitude: userLocation.longitude
+        })
       };
-      
-      // Create lapak using service
+
       const newLapak = await createLapak(lapakData, images);
       
-      toast.success('Produk Berhasil Ditambahkan!', `Produk "${newLapak.title}" telah tersedia di lapak dan dapat dilihat oleh tetangga.`);
+      toast.success('Produk berhasil ditambahkan ke lapak!');
       
-      // Delay before navigation to show success message
+      // Add a small delay to allow for backend processing, then navigate to homepage with refresh
       setTimeout(() => {
-        router.push('/lapak');
-      }, 1500);
-    } catch (error) {
+        router.push('/?refresh=lapak');
+      }, 3000);
+      
+    } catch (error: any) {
       console.error('Error creating lapak:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan saat menyimpan. Silakan periksa koneksi dan coba lagi.';
-      toast.error('Gagal Menambahkan Produk', errorMessage);
+      
+      if (error.status === 422) {
+        toast.error('Data tidak lengkap. Periksa kembali form Anda.');
+      } else if (error.status === 401) {
+        toast.error('Sesi telah berakhir. Silakan login kembali.');
+        router.push('/login');
+      } else {
+        toast.error(error.message || 'Gagal menambahkan produk. Coba lagi.');
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  // Show loading state while checking authentication
+  if (isLoadingUser) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-text-secondary">Memuat...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if user is not authenticated
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h3 className="text-heading-2 mb-2u">Akses Ditolak</h3>
+          <p className="text-text-secondary mb-4u">Anda harus login untuk mengakses halaman ini</p>
+          <Button onClick={() => router.push('/login')}>
+            Login
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -625,14 +770,45 @@ export default function BukaLapakPage() {
             />
           </div>
 
-          {/* AI Insights Section */}
+          {/* AI Analysis Section - Single button approach */}
           {images.length > 0 && (
-            <AIInsights
-              images={images}
-              productName={formData.title}
-              description={formData.description}
-              onInsightClick={handleInsightClick}
-            />
+            <div className="space-y-4">
+              <div className="border-t pt-6">
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={handleGenerateAIDescription}
+                    disabled={isGeneratingDescription || images.length === 0}
+                    className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 space-x-2"
+                  >
+                    {isGeneratingDescription ? (
+                      <>
+                        <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
+                        <span>Menganalisis...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-5 w-5" />
+                        <span>Analisis Produk dengan AI</span>
+                      </>
+                    )}
+                  </button>
+                  <p className="text-sm text-gray-600 mt-2">
+                    AI Google Gemini akan menganalisis foto dan mengisi form otomatis
+                  </p>
+                </div>
+              </div>
+
+              {/* AI Insights - Only show after analysis is completed */}
+              {(formData.title || formData.description) && !isGeneratingDescription && (
+                <AIInsights
+                  images={images}
+                  productName={formData.title}
+                  description={formData.description}
+                  onInsightClick={handleInsightClick}
+                />
+              )}
+            </div>
           )}
 
           {/* Product Details Section */}
@@ -662,40 +838,6 @@ export default function BukaLapakPage() {
                 {errors.title && (
                   <p className="text-caption text-error mt-1u">{errors.title}</p>
                 )}
-              </div>
-
-              {/* AI Description Generator */}
-              <div className="mb-6u">
-                <button
-                  type="button"
-                  onClick={handleGenerateAIDescription}
-                  disabled={isGeneratingDescription || images.length === 0}
-                  className={cn(
-                    'w-full px-4u py-3u rounded-button border border-dashed transition-all duration-200',
-                    isGeneratingDescription || images.length === 0
-                      ? 'border-border bg-surface-secondary text-text-secondary cursor-not-allowed'
-                      : 'border-accent bg-accent/5 text-accent hover:bg-accent/10'
-                  )}
-                >
-                  <div className="flex items-center justify-center gap-2u">
-                    {isGeneratingDescription ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-                        <span>Menganalisis dengan AI...</span>
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                        </svg>
-                        <span>Analisis Produk dengan AI</span>
-                      </>
-                    )}
-                  </div>
-                  <p className="text-caption text-text-secondary mt-1u">
-                    {images.length === 0 ? 'Upload foto produk terlebih dahulu' : 'AI Google Gemini akan menganalisis foto dan mengisi form otomatis'}
-                  </p>
-                </button>
               </div>
 
               {/* Description with AI Feature */}
@@ -821,6 +963,48 @@ export default function BukaLapakPage() {
             <div className="flex items-center gap-2u mb-3u">
               <MapPin className="h-5 w-5 text-primary" />
               <h2 className="text-heading-2 font-semibold">Lokasi</h2>
+            </div>
+
+            {/* Location Status */}
+            <div className="mb-4u">
+              {locationPermission === 'granted' && userLocation ? (
+                <div className="flex items-center gap-2u p-3u bg-success/10 border border-success/20 rounded-lg">
+                  <svg className="w-5 h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <div>
+                    <p className="text-body-small font-medium text-success">Lokasi terdeteksi</p>
+                    <p className="text-caption text-text-secondary">
+                      Koordinat: {userLocation.latitude.toFixed(4)}, {userLocation.longitude.toFixed(4)}
+                    </p>
+                  </div>
+                </div>
+              ) : locationPermission === 'denied' ? (
+                <div className="flex items-center justify-between p-3u bg-warning/10 border border-warning/20 rounded-lg">
+                  <div className="flex items-center gap-2u">
+                    <svg className="w-5 h-5 text-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                    <div>
+                      <p className="text-body-small font-medium text-warning">Lokasi tidak tersedia</p>
+                      <p className="text-caption text-text-secondary">Lapak mungkin tidak muncul di pencarian terdekat</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={requestLocation}
+                    disabled={isGettingLocation}
+                    className="btn-secondary text-caption"
+                  >
+                    {isGettingLocation ? 'Mencari...' : 'Coba Lagi'}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2u p-3u bg-info/10 border border-info/20 rounded-lg">
+                  <div className="animate-spin h-5 w-5 border-2 border-info border-t-transparent rounded-full"></div>
+                  <p className="text-body-small text-info">Mendeteksi lokasi...</p>
+                </div>
+              )}
             </div>
 
             <div>

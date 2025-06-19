@@ -65,6 +65,8 @@ export interface LapakCreate {
   price: number;
   unit: string;
   stock_quantity: number;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface LapakUpdate {

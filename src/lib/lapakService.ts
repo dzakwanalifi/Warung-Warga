@@ -36,23 +36,64 @@ export interface LapakStats {
 // Get nearby lapak based on user location - Updated to match API documentation
 export const getNearbyLapak = async (params: NearbyParams): Promise<LapakListResponse> => {
   try {
-    console.log('🚀 Calling API: GET /api/lapak/nearby', params);
+    console.log('🌍 Fetching nearby lapak:', params);
     
-    const queryParams = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        queryParams.append(key, value.toString());
-      }
+    const queryParams = new URLSearchParams({
+      lat: params.latitude.toString(),
+      lon: params.longitude.toString(),
+      radius: (params.radius || 5000).toString(),
+      page: params.page?.toString() || '1',
+      limit: params.limit?.toString() || '10'
     });
 
-    const response = await apiClient.get<LapakListResponse>(`/api/lapak/nearby?${queryParams.toString()}`);
-    console.log('✅ API Response received:', response);
+    const response = await apiClient.get(`/lapak/nearby?${queryParams}`);
+    console.log('✅ Nearby lapak fetched:', response);
+    
     return response;
   } catch (error) {
     console.warn('⚠️ API call failed, using mock data:', error);
     
     // Return mock data as fallback
     return getMockLapakData();
+  }
+};
+
+// Get current user's own lapaks
+export const getMyLapak = async (params?: {
+  page?: number;
+  limit?: number;
+  status?: 'available' | 'sold_out' | 'inactive';
+}): Promise<LapakListResponse> => {
+  try {
+    console.log('👤 Fetching my lapak:', params);
+    
+    const queryParams = new URLSearchParams({
+      page: params?.page?.toString() || '1',
+      limit: params?.limit?.toString() || '12'
+    });
+
+    if (params?.status) {
+      queryParams.append('status', params.status);
+    }
+
+    const response = await apiClient.get(`/lapak/my?${queryParams}`);
+    console.log('✅ My lapak fetched:', response);
+    
+    return response;
+  } catch (error: any) {
+    console.error('❌ Failed to fetch my lapak:', error);
+    
+    // Return empty result for errors (no mock data for user's own lapaks)
+    if (error.status === 401) {
+      throw new Error('Anda harus login untuk melihat lapak Anda');
+    }
+    
+    return {
+      lapak: [],
+      total: 0,
+      page: 1,
+      limit: 12
+    };
   }
 };
 
@@ -250,7 +291,15 @@ export const getLapakDetail = async (lapakId: string): Promise<Lapak> => {
 // Create a new lapak - Updated to match API documentation
 export const createLapak = async (lapakData: LapakCreate, images: File[]): Promise<Lapak> => {
   try {
-    console.log('🚀 Calling API: POST /api/lapak/create', { lapakData, imageCount: images.length });
+    console.log('🚀 Calling API: POST /lapak', { 
+      lapakData, 
+      imageCount: images.length,
+      hasLocation: !!(lapakData.latitude && lapakData.longitude),
+      coordinates: lapakData.latitude && lapakData.longitude ? {
+        lat: lapakData.latitude,
+        lon: lapakData.longitude
+      } : 'Not provided'
+    });
     
     // Create FormData for multipart upload
     const formData = new FormData();
@@ -259,15 +308,17 @@ export const createLapak = async (lapakData: LapakCreate, images: File[]): Promi
     Object.entries(lapakData).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
         formData.append(key, value.toString());
+        console.log(`📝 FormData: ${key} = ${value}`);
       }
     });
     
     // Add images
     images.forEach((image, index) => {
-      formData.append(`images`, image);
+      // Explicitly set the content type for each image to prevent encoding issues
+      formData.append('images', image, image.name);
     });
     
-    const response = await apiClient.post<Lapak>('/api/lapak/create', formData, {
+    const response = await apiClient.post<Lapak>('/lapak', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -290,8 +341,8 @@ export const createLapak = async (lapakData: LapakCreate, images: File[]): Promi
       stock_quantity: lapakData.stock_quantity,
       image_urls: images.map((_, index) => `https://picsum.photos/400/300?random=${Date.now() + index}`),
       status: 'available',
-      latitude: 0,
-      longitude: 0,
+      latitude: lapakData.latitude || 0,
+      longitude: lapakData.longitude || 0,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       seller: {
@@ -1187,13 +1238,14 @@ export const calculateLapakStats = (lapakList: LapakItem[]): LapakStats => {
   };
 };
 
-// Fetch all lapak
+// Fetch all lapak - Note: API only supports nearby search, so this falls back to mock
 export const getLapakList = async (): Promise<LapakItem[]> => {
   try {
-    console.log('🚀 Calling API: GET /api/lapak');
-    const response = await apiClient.get<LapakItem[]>('/api/lapak');
-    console.log('✅ API Response received:', response);
-    return response;
+    // Note: The backend API doesn't have a general "get all lapak" endpoint
+    // It only supports location-based queries via /lapak/nearby
+    // For now, we'll use mock data until this feature is implemented
+    console.log('⚠️ No general lapak list endpoint available, using mock data');
+    return getMockLapakList();
   } catch (error) {
     console.warn('⚠️ API call failed, using mock data:', error);
     return getMockLapakList();

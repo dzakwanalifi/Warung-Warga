@@ -187,6 +187,7 @@ function NearbyLapakSection() {
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationPermission, setLocationPermission] = useState<'granted' | 'denied' | 'prompt'>('prompt');
   const [usingMockData, setUsingMockData] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
 
   // Get user location
   const requestLocation = async () => {
@@ -219,7 +220,7 @@ function NearbyLapakSection() {
   };
 
   // Fetch nearby lapak
-  const fetchNearbyLapak = async (latitude: number, longitude: number) => {
+  const fetchNearbyLapak = async (latitude: number, longitude: number, forceRefresh = false) => {
     setIsLoading(true);
     setError(null);
     
@@ -234,6 +235,9 @@ function NearbyLapakSection() {
       if (response && response.lapak) {
         setLapakList(response.lapak);
         setError(null);
+        if (forceRefresh) {
+          setLastRefresh(Date.now());
+        }
       } else {
         setError('Tidak ada data lapak yang ditemukan');
       }
@@ -260,6 +264,15 @@ function NearbyLapakSection() {
     }
   };
 
+  // Refresh function that can be called from outside
+  const refreshNearbyLapak = () => {
+    if (userLocation) {
+      fetchNearbyLapak(userLocation.latitude, userLocation.longitude, true);
+    } else {
+      requestLocation();
+    }
+  };
+
   useEffect(() => {
     requestLocation();
   }, []);
@@ -270,9 +283,24 @@ function NearbyLapakSection() {
     }
   }, [userLocation]);
 
+  // Check for URL parameters that indicate returning from lapak creation
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('refresh') === 'lapak' && userLocation) {
+      // Refresh nearby lapaks after a short delay
+      setTimeout(() => {
+        fetchNearbyLapak(userLocation.latitude, userLocation.longitude, true);
+      }, 1000);
+      
+      // Clean up URL parameter
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [userLocation]);
+
   const handleRetry = () => {
     if (userLocation) {
-      fetchNearbyLapak(userLocation.latitude, userLocation.longitude);
+      fetchNearbyLapak(userLocation.latitude, userLocation.longitude, true);
     } else {
       requestLocation();
     }
@@ -379,15 +407,27 @@ function NearbyLapakSection() {
       
       <div className="flex items-center justify-between mb-3u">
         <h3 className="text-heading-2">Lapak Terdekat</h3>
-        <Link 
-          href="/lapak" 
-          className="text-caption text-primary font-medium flex items-center gap-1u hover:gap-2u transition-all"
-        >
-          Semua
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </Link>
+        <div className="flex items-center gap-2u">
+          <button
+            onClick={refreshNearbyLapak}
+            disabled={isLoading}
+            className="p-2 text-primary hover:bg-primary/10 rounded-full transition-colors disabled:opacity-50"
+            title="Refresh lapak terdekat"
+          >
+            <svg className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+          <Link 
+            href="/lapak" 
+            className="text-caption text-primary font-medium flex items-center gap-1u hover:gap-2u transition-all"
+          >
+            Semua
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
+        </div>
       </div>
       
       <div className="grid grid-cols-2 gap-3u">

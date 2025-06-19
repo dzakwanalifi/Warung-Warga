@@ -3,18 +3,21 @@ import { apiClient } from './api';
 // Types for Borongan API
 export interface BoronganItem {
   id: string;
+  supplier_id: string;
   title: string;
   description: string;
+  product_type?: string;
   target_quantity: number;
   current_quantity: number;
   price_per_unit: number;
+  unit: string;
+  pickup_point_address: string;
   original_price_per_unit?: number;
   deadline: string;
-  status: 'active' | 'completed' | 'cancelled';
+  status: 'active' | 'completed' | 'cancelled' | 'failed' | 'successful';
   participants_count: number;
-  created_by: string;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 export interface BoronganStats {
@@ -58,181 +61,205 @@ export const getMockBoronganList = (): BoronganItem[] => {
   return [
     {
       id: "brg001",
+      supplier_id: "user123",
       title: "Beras Premium Organik 25kg",
       description: "Beras organik premium langsung dari petani lokal. Kualitas terjamin, bebas pestisida, dan sudah bersertifikat organik.",
       target_quantity: 10,
       current_quantity: 7,
       price_per_unit: 180000,
+      unit: "kg",
+      pickup_point_address: "Warung Pak Budi, Jl. Kemang Raya No. 45",
       original_price_per_unit: 220000,
       deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
       status: 'active',
       participants_count: 7,
-      created_by: "user123",
       created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
       updated_at: new Date().toISOString()
     },
     {
       id: "brg002",
+      supplier_id: "user456",
       title: "Minyak Goreng Kemasan 2L",
       description: "Minyak goreng berkualitas dalam kemasan 2 liter. Cocok untuk kebutuhan rumah tangga sehari-hari.",
       target_quantity: 20,
       current_quantity: 15,
       price_per_unit: 32000,
+      unit: "L",
+      pickup_point_address: "Warung Pak Budi, Jl. Kemang Raya No. 45",
       original_price_per_unit: 38000,
       deadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
       status: 'active',
       participants_count: 15,
-      created_by: "user456",
       created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
       updated_at: new Date().toISOString()
     },
     {
       id: "brg003",
+      supplier_id: "user789",
       title: "Gula Pasir Kemasan 1kg",
       description: "Gula pasir murni kemasan 1kg dari pabrik gula terpercaya. Kualitas SNI dan harga terjangkau.",
       target_quantity: 50,
       current_quantity: 42,
       price_per_unit: 14500,
+      unit: "kg",
+      pickup_point_address: "Warung Pak Budi, Jl. Kemang Raya No. 45",
       original_price_per_unit: 17000,
       deadline: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
       status: 'active',
       participants_count: 28,
-      created_by: "user789",
       created_at: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
       updated_at: new Date().toISOString()
     },
     {
       id: "brg004",
+      supplier_id: "user101",
       title: "Telur Ayam Kampung 1kg",
       description: "Telur ayam kampung segar langsung dari peternak lokal. Ukuran medium-large dengan kualitas premium.",
       target_quantity: 30,
       current_quantity: 30,
       price_per_unit: 32000,
+      unit: "kg",
+      pickup_point_address: "Warung Pak Budi, Jl. Kemang Raya No. 45",
       original_price_per_unit: 38000,
       deadline: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
       status: 'completed',
       participants_count: 25,
-      created_by: "user101",
       created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
       updated_at: new Date().toISOString()
     },
     {
       id: "brg005",
+      supplier_id: "user202",
       title: "Daging Sapi Segar 1kg",
       description: "Daging sapi segar pilihan dari RPH bersertifikat halal. Cocok untuk berbagai masakan.",
       target_quantity: 15,
       current_quantity: 12,
       price_per_unit: 135000,
+      unit: "kg",
+      pickup_point_address: "Warung Pak Budi, Jl. Kemang Raya No. 45",
       original_price_per_unit: 150000,
       deadline: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(),
       status: 'active',
       participants_count: 12,
-      created_by: "user202",
       created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
       updated_at: new Date().toISOString()
     },
     {
       id: "brg006",
+      supplier_id: "user303",
       title: "Kopi Arabika Premium 500g",
       description: "Kopi arabika premium single origin dari Toraja. Roasted fresh untuk cita rasa terbaik.",
       target_quantity: 25,
       current_quantity: 18,
       price_per_unit: 85000,
+      unit: "g",
+      pickup_point_address: "Warung Pak Budi, Jl. Kemang Raya No. 45",
       original_price_per_unit: 95000,
       deadline: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(),
       status: 'active',
       participants_count: 18,
-      created_by: "user303",
       created_at: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
       updated_at: new Date().toISOString()
     },
     {
       id: "brg007",
+      supplier_id: "user404",
       title: "Buah Jeruk Manis 5kg",
       description: "Jeruk manis segar langsung dari kebun. Rasa manis natural dan kandungan vitamin C tinggi.",
       target_quantity: 40,
       current_quantity: 35,
       price_per_unit: 25000,
+      unit: "kg",
+      pickup_point_address: "Warung Pak Budi, Jl. Kemang Raya No. 45",
       original_price_per_unit: 30000,
       deadline: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString(),
       status: 'active',
       participants_count: 22,
-      created_by: "user404",
       created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
       updated_at: new Date().toISOString()
     },
     {
       id: "brg008",
+      supplier_id: "user505",
       title: "Ikan Lele Segar 2kg",
       description: "Ikan lele segar dari kolam budidaya bersih. Sudah dibersihkan dan siap untuk dimasak.",
       target_quantity: 20,
       current_quantity: 16,
       price_per_unit: 28000,
+      unit: "kg",
+      pickup_point_address: "Warung Pak Budi, Jl. Kemang Raya No. 45",
       original_price_per_unit: 35000,
       deadline: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString(),
       status: 'active',
       participants_count: 16,
-      created_by: "user505",
       created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
       updated_at: new Date().toISOString()
     },
     {
       id: "brg009",
+      supplier_id: "user606",
       title: "Cabai Merah Segar 1kg",
       description: "Cabai merah segar dengan tingkat kepedasan sedang. Cocok untuk bumbu masakan sehari-hari.",
       target_quantity: 35,
       current_quantity: 8,
       price_per_unit: 45000,
+      unit: "kg",
+      pickup_point_address: "Warung Pak Budi, Jl. Kemang Raya No. 45",
       original_price_per_unit: 55000,
       deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       status: 'active',
       participants_count: 8,
-      created_by: "user606",
       created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
       updated_at: new Date().toISOString()
     },
     {
       id: "brg010",
+      supplier_id: "user707",
       title: "Tepung Terigu Protein Tinggi 1kg",
       description: "Tepung terigu protein tinggi cocok untuk membuat roti, kue, dan berbagai adonan.",
       target_quantity: 60,
       current_quantity: 55,
       price_per_unit: 12500,
+      unit: "kg",
+      pickup_point_address: "Warung Pak Budi, Jl. Kemang Raya No. 45",
       original_price_per_unit: 15000,
       deadline: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000).toISOString(),
       status: 'active',
       participants_count: 38,
-      created_by: "user707",
       created_at: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
       updated_at: new Date().toISOString()
     },
     {
       id: "brg011",
+      supplier_id: "user808",
       title: "Mentega Tawar 500g",
       description: "Mentega tawar berkualitas premium untuk keperluan baking dan masak. Tekstur lembut dan rasa gurih.",
       target_quantity: 25,
       current_quantity: 20,
       price_per_unit: 45000,
+      unit: "g",
+      pickup_point_address: "Warung Pak Budi, Jl. Kemang Raya No. 45",
       original_price_per_unit: 52000,
       deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
       status: 'active',
       participants_count: 20,
-      created_by: "user808",
       created_at: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
       updated_at: new Date().toISOString()
     },
     {
       id: "brg012",
+      supplier_id: "user909",
       title: "Sayur Bayam Hidroponik 250g",
       description: "Sayur bayam segar hasil hidroponik. Bebas pestisida, bersih, dan bergizi tinggi.",
       target_quantity: 50,
       current_quantity: 12,
       price_per_unit: 8500,
+      unit: "g",
+      pickup_point_address: "Warung Pak Budi, Jl. Kemang Raya No. 45",
       original_price_per_unit: 12000,
       deadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
       status: 'active',
       participants_count: 12,
-      created_by: "user909",
       created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
       updated_at: new Date().toISOString()
     }
@@ -242,21 +269,35 @@ export const getMockBoronganList = (): BoronganItem[] => {
 // Fetch all borongan
 export const getBoronganList = async (): Promise<BoronganItem[]> => {
   try {
-    console.log('🚀 Calling API: GET /api/borongan');
-    const response = await apiClient.get<BoronganItem[]>('/api/borongan');
+    console.log(' Calling API: GET /borongan/');
+    const response = await apiClient.get<{ borongan: BoronganItem[] }>('/borongan/');
     console.log('✅ API Response received:', response);
-    return response;
+    return response.borongan || [];
   } catch (error) {
     console.warn('⚠️ API call failed, using mock data:', error);
     return getMockBoronganList();
   }
 };
 
+// Fetch borongan created by the current user
+export const getMyBorongan = async (): Promise<BoronganItem[]> => {
+  try {
+    console.log('🚀 Calling API: GET /borongan/my');
+    const response = await apiClient.get<{ borongan: BoronganItem[] }>('/borongan/my');
+    console.log('✅ My borongan fetched:', response);
+    return response.borongan || [];
+  } catch (error) {
+    console.warn('⚠️ API call failed for my borongan:', error);
+    // Return empty array if API fails since this is user-specific data
+    return [];
+  }
+};
+
 // Fetch borongan detail by ID
 export const getBoronganDetail = async (id: string): Promise<BoronganDetail | null> => {
   try {
-    console.log(`🚀 Calling API: GET /api/borongan/${id}`);
-    const response = await apiClient.get<BoronganDetail>(`/api/borongan/${id}`);
+    console.log(`🚀 Calling API: GET /borongan/${id}`);
+    const response = await apiClient.get<BoronganDetail>(`/borongan/${id}`);
     console.log('✅ API Response received:', response);
     return response;
   } catch (error) {
@@ -515,37 +556,58 @@ export const deleteBorongan = async (id: string): Promise<boolean> => {
 };
 
 // CREATE borongan
-export const createBorongan = async (boronganData: Omit<BoronganItem, 'id' | 'created_at' | 'updated_at' | 'current_quantity' | 'participants_count'>): Promise<BoronganItem> => {
+export const createBorongan = async (boronganData: {
+  title: string;
+  description: string;
+  product_type?: string;
+  target_quantity: number;
+  price_per_unit: number;
+  unit: string;
+  pickup_point_address: string;
+  deadline: string;
+}): Promise<BoronganItem> => {
   try {
-    console.log('🚀 Calling API: POST /api/borongan', boronganData);
-    const response = await apiClient.post<BoronganItem>('/api/borongan', boronganData);
+    console.log('Creating borongan with data:', boronganData);
+    console.log('POST /borongan/');
+    
+    const response = await apiClient.post<BoronganItem>('/borongan/', boronganData);
+    
     console.log('✅ Borongan created successfully:', response);
     return response;
   } catch (error) {
-    console.error('❌ Error creating borongan via API:', error);
+    console.error('❌ Error creating borongan:', error);
     
-    // For development/MVP, simulate creation with mock data as fallback
-    console.warn('⚠️ Using mock creation as fallback');
-    const newBorongan: BoronganItem = {
-      ...boronganData,
+    // Provide fallback mock data for development
+    const mockBorongan: BoronganItem = {
       id: `brg${Date.now()}`,
+      supplier_id: 'current-user',
+      title: boronganData.title,
+      description: boronganData.description,
+      product_type: boronganData.product_type,
+      target_quantity: boronganData.target_quantity,
       current_quantity: 0,
+      price_per_unit: boronganData.price_per_unit,
+      unit: boronganData.unit,
+      pickup_point_address: boronganData.pickup_point_address,
+      deadline: boronganData.deadline,
+      status: 'active',
       participants_count: 0,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    return newBorongan;
+    console.log('📦 Using mock borongan data as fallback:', mockBorongan);
+    
+    // Re-throw error to be handled by the calling component
+    throw error;
   }
 };
 
 // JOIN borongan
 export const joinBorongan = async (id: string, quantity: number = 1): Promise<boolean> => {
   try {
-    console.log(`🚀 Calling API: POST /api/borongan/${id}/join`, { quantity });
-    await apiClient.post(`/api/borongan/${id}/join`, { quantity });
+    console.log(`🚀 Calling API: POST /borongan/${id}/join`, { quantity });
+    await apiClient.post(`/borongan/${id}/join`, { quantity });
     console.log('✅ Successfully joined borongan');
     return true;
   } catch (error) {
@@ -558,12 +620,16 @@ export const joinBorongan = async (id: string, quantity: number = 1): Promise<bo
   }
 };
 
-// LEAVE borongan
+// LEAVE borongan - Note: API doesn't have leave endpoint, this is a placeholder
 export const leaveBorongan = async (id: string): Promise<boolean> => {
   try {
-    console.log(`🚀 Calling API: POST /api/borongan/${id}/leave`);
-    await apiClient.post(`/api/borongan/${id}/leave`);
-    console.log('✅ Successfully left borongan');
+    // Note: The backend API doesn't have a leave borongan endpoint
+    // This would require a separate implementation or different business logic
+    console.log(`⚠️ Leave borongan not implemented in backend API, using mock`);
+    
+    // For development/MVP, simulate leave as fallback
+    console.warn('⚠️ Using mock leave as fallback');
+    await new Promise(resolve => setTimeout(resolve, 1000));
     return true;
   } catch (error) {
     console.error('❌ Error leaving borongan via API:', error);

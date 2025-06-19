@@ -11,8 +11,8 @@ const TabsLayoutComponent = memo(function TabsLayout({
 }) {
   return (
     <>
-      {/* Main content area with bottom padding to account for fixed bottom nav */}
-      <main className="min-h-screen pb-20 transition-all duration-200">
+      {/* Main content area with adequate bottom padding to account for fixed bottom nav + safe area */}
+      <main className="min-h-screen pb-24 sm:pb-20 transition-all duration-200">
         <div className="relative overflow-hidden">
           {children}
         </div>

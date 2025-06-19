@@ -110,9 +110,11 @@ export const ListingCard: React.FC<ListingCardProps> = ({ lapak, className }) =>
                 {lapak.stock_quantity} {lapak.unit}
               </span>
             </div>
-            <span className="text-caption text-text-secondary">
-              {formatRelativeTime(lapak.created_at)}
-            </span>
+            {lapak.created_at && (
+              <span className="text-caption text-text-secondary">
+                {formatRelativeTime(lapak.created_at)}
+              </span>
+            )}
           </div>
         </div>
       </div>

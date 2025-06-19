@@ -109,9 +109,9 @@ export const logoutUser = async (): Promise<void> => {
 export const getCurrentUser = async (): Promise<User> => {
   try {
     const response = await apiClient.get('/users/me');
-    return response.data;
+    return response;
   } catch (error: any) {
-    if (error.response?.status === 401) {
+    if (error.status === 401) {
       throw new Error('Sesi telah berakhir. Silakan login kembali');
     } else {
       throw new Error('Gagal mengambil data pengguna');

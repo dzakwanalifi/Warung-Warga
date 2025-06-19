@@ -1,27 +1,22 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   Camera, 
   CheckCircle, 
-  AlertTriangle, 
+  AlertCircle, 
   Info, 
   Lightbulb, 
   Eye, 
   Palette, 
-  Grid, 
   Sun,
-  Target,
   TrendingUp,
-  Loader2,
-  Star,
-  Sparkles,
-  Layers
+  Zap
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { analyzeImages as analyzeImagesAPI } from '@/lib/lapakService';
 import { EnhancedAnalysisResult, PhotoInsight } from '@/lib/types';
 
+// Simplified interface for better UX
 interface AIInsight {
   id: string;
   type: 'success' | 'warning' | 'info' | 'suggestion';
@@ -30,7 +25,7 @@ interface AIInsight {
   description: string;
   confidence: number;
   actionable?: boolean;
-  photoSpecific?: boolean; // New field to indicate photo-specific insights
+  photoSpecific?: boolean;
 }
 
 interface AIInsightsProps {
@@ -40,12 +35,12 @@ interface AIInsightsProps {
   onInsightClick?: (insight: AIInsight) => void;
 }
 
-// Convert backend PhotoInsight to frontend AIInsight
+// Convert backend insight to frontend format
 const convertPhotoInsight = (backendInsight: PhotoInsight, index: number): AIInsight => {
   return {
-    id: `api-${index}`,
-    type: backendInsight.type,
-    category: backendInsight.category as any,
+    id: `insight-${index}`,
+    type: backendInsight.type as AIInsight['type'],
+    category: backendInsight.category as AIInsight['category'],
     title: backendInsight.title,
     description: backendInsight.description,
     confidence: backendInsight.confidence,
@@ -54,428 +49,286 @@ const convertPhotoInsight = (backendInsight: PhotoInsight, index: number): AIIns
   };
 };
 
-const analyzeImages = async (images: File[], productName?: string): Promise<AIInsight[]> => {
-  if (images.length === 0) {
-    return [{
-      id: 'no-images',
-      type: 'warning',
-      category: 'visibility',
-      title: 'Foto Produk Diperlukan',
-      description: 'Tambahkan foto untuk mendapatkan analisis AI yang komprehensif',
-      confidence: 100,
-      actionable: true
-    }];
-  }
-
+// Simplified analysis function that returns top 3 insights
+const analyzeImagesForInsights = async (images: File[], productName?: string): Promise<AIInsight[]> => {
   try {
-    console.log(`🔍 Analyzing ${images.length} photo(s) with consolidated AI API...`);
-    const analysisResult = await analyzeImagesAPI(images);
-
-    const insights: AIInsight[] = [];
-
-    // Convert backend insights to frontend format
-    analysisResult.insights.forEach((insight, index) => {
-      insights.push(convertPhotoInsight(insight, index));
-    });
-
-    // Add quality score insights
-    const qualityScore = analysisResult.photo_quality.overall_score;
-    if (qualityScore > 85) {
-      insights.unshift({
-        id: 'quality-excellent',
-        type: 'success',
-        category: 'quality',
-        title: 'Kualitas Foto Excellent',
-        description: `Foto memiliki kualitas sangat baik dengan skor ${qualityScore}/100. Pencahayaan, komposisi, dan ketajaman optimal.`,
-        confidence: qualityScore,
-        actionable: false,
-        photoSpecific: true
-      });
-    } else if (qualityScore > 70) {
-      insights.unshift({
-        id: 'quality-good',
-        type: 'success',
-        category: 'quality',
-        title: 'Kualitas Foto Baik',
-        description: `Foto memiliki kualitas baik dengan skor ${qualityScore}/100. Beberapa aspek masih bisa ditingkatkan.`,
-        confidence: qualityScore,
-        actionable: true,
-        photoSpecific: true
-      });
-    } else {
-      insights.unshift({
-        id: 'quality-needs-improvement',
-        type: 'warning',
-        category: 'quality',
-        title: 'Kualitas Foto Perlu Ditingkatkan',
-        description: `Foto memiliki skor ${qualityScore}/100. Perbaiki pencahayaan dan komposisi untuk hasil yang lebih baik.`,
-        confidence: Math.max(qualityScore, 60),
-        actionable: true,
-        photoSpecific: true
-      });
-    }
-
-    // Add specific quality metric insights
-    const { lighting_score, composition_score, focus_score, background_score, color_vibrancy } = analysisResult.photo_quality;
+    const result: EnhancedAnalysisResult = await analyzeImagesAPI(images);
     
-    if (lighting_score < 60) {
-      insights.push({
-        id: 'lighting-improvement',
-        type: 'suggestion',
-        category: 'lighting',
-        title: 'Perbaiki Pencahayaan',
-        description: `Pencahayaan foto perlu diperbaiki (skor: ${lighting_score}/100). Gunakan cahaya alami atau lampu putih yang merata.`,
-        confidence: 85,
-        actionable: true,
-        photoSpecific: true
-      });
+    if (result?.insights && result.insights.length > 0) {
+      // Convert and prioritize insights
+      const convertedInsights = result.insights.map(convertPhotoInsight);
+      
+      // Sort by confidence and actionable first, then take top 3
+      const prioritizedInsights = convertedInsights
+        .sort((a: AIInsight, b: AIInsight) => {
+          // Prioritize actionable insights and higher confidence
+          if (a.actionable && !b.actionable) return -1;
+          if (!a.actionable && b.actionable) return 1;
+          return b.confidence - a.confidence;
+        })
+        .slice(0, 3); // Limit to top 3 insights
+      
+      return prioritizedInsights;
     }
-
-    if (composition_score < 60) {
-      insights.push({
-        id: 'composition-improvement',
-        type: 'suggestion',
-        category: 'composition',
-        title: 'Optimalkan Komposisi',
-        description: `Komposisi foto bisa diperbaiki (skor: ${composition_score}/100). Coba posisikan produk menggunakan rule of thirds.`,
-        confidence: 80,
-        actionable: true,
-        photoSpecific: true
-      });
-    }
-
-    if (focus_score < 70) {
-      insights.push({
-        id: 'focus-improvement',
-        type: 'warning',
-        category: 'quality',
-        title: 'Tingkatkan Ketajaman',
-        description: `Ketajaman foto perlu diperbaiki (skor: ${focus_score}/100). Pastikan kamera fokus pada produk dan tangan tidak bergetar.`,
-        confidence: 85,
-        actionable: true,
-        photoSpecific: true
-      });
-    }
-
-    // Add recommendations as insights
-    analysisResult.recommendations.forEach((recommendation, index) => {
-      insights.push({
-        id: `recommendation-${index}`,
-        type: 'info',
-        category: 'optimization',
-        title: 'Rekomendasi AI',
-        description: recommendation,
-        confidence: 80,
-        actionable: true,
-        photoSpecific: true
-      });
-    });
-
-    // Add insights based on number of photos
-    if (images.length === 1) {
-      insights.push({
-        id: 'single-photo-tip',
-        type: 'suggestion',
-        category: 'visibility',
-        title: 'Tambahkan Foto dari Sudut Lain',
-        description: 'Foto dari berbagai sudut akan memberikan gambaran produk yang lebih lengkap kepada pembeli dan meningkatkan kepercayaan.',
-        confidence: 90,
-        actionable: true,
-        photoSpecific: true
-      });
-    } else if (images.length > 3) {
-      insights.push({
-        id: 'multiple-photos-success',
-        type: 'success',
-        category: 'visibility',
-        title: 'Variasi Foto Excellent',
-        description: `${images.length} foto memberikan gambaran produk yang sangat lengkap dari berbagai perspektif. Ini akan meningkatkan kepercayaan pembeli secara signifikan.`,
-        confidence: 95,
-        actionable: false,
-        photoSpecific: true
-      });
-    }
-
-    return insights;
-
+    
+    return getFallbackInsights(images, productName);
   } catch (error) {
-    console.error('❌ Failed to analyze photos with consolidated API, using fallback insights:', error);
-    
-    // Fallback to basic insights if API fails
+    console.error('Error analyzing images:', error);
     return getFallbackInsights(images, productName);
   }
 };
 
-// Fallback function when API is not available
+// Simplified fallback insights (max 3)
 const getFallbackInsights = (images: File[], productName?: string): AIInsight[] => {
-  const insights: AIInsight[] = [];
-  const imageCount = images.length;
+  const baseInsights: AIInsight[] = [
+    {
+      id: 'quality-check',
+      type: 'info',
+      category: 'quality',
+      title: 'Kualitas Foto Baik',
+      description: 'Foto sudah cukup baik untuk menampilkan produk. Pastikan pencahayaan merata untuk hasil optimal.',
+      confidence: 75,
+      actionable: true,
+      photoSpecific: true
+    }
+  ];
 
-  // Basic insights when API is not available
-  insights.push({
-    id: 'api-unavailable',
-    type: 'info',
-    category: 'quality',
-    title: 'Analisis Foto Standar',
-    description: 'Layanan AI analisis sedang tidak tersedia. Menggunakan analisis standar berdasarkan jumlah foto yang diunggah.',
-    confidence: 70,
-    actionable: false,
-    photoSpecific: true
-  });
-
-  if (imageCount === 1) {
-    insights.push({
-      id: 'single-photo-fallback',
+  // Add image count specific insight
+  if (images.length === 1) {
+    baseInsights.push({
+      id: 'multiple-angles',
       type: 'suggestion',
       category: 'visibility',
-      title: 'Tambahkan Lebih Banyak Foto',
+      title: 'Tambahkan Foto dari Sudut Lain',
       description: 'Foto dari berbagai sudut akan memberikan gambaran produk yang lebih lengkap kepada pembeli.',
-      confidence: 85,
+      confidence: 90,
       actionable: true,
       photoSpecific: true
     });
-  } else if (imageCount >= 3) {
-    insights.push({
-      id: 'multiple-photos-fallback',
+  } else {
+    baseInsights.push({
+      id: 'multiple-photos',
       type: 'success',
       category: 'visibility',
-      title: 'Variasi Foto Baik',
-      description: `${imageCount} foto memberikan gambaran produk dari berbagai perspektif. Ini akan meningkatkan kepercayaan pembeli.`,
-      confidence: 80,
+      title: 'Variasi Foto Tersedia',
+      description: `Anda telah mengunggah ${images.length} foto yang memberikan gambaran produk dari berbagai perspektif.`,
+      confidence: 85,
       actionable: false,
       photoSpecific: true
     });
   }
 
-  // Generic photo tips
-  insights.push({
+  // Add lighting suggestion
+  baseInsights.push({
     id: 'lighting-tip',
     type: 'suggestion',
     category: 'lighting',
-    title: 'Tips Pencahayaan',
-    description: 'Gunakan cahaya alami atau lampu putih yang merata untuk hasil foto yang lebih baik.',
-    confidence: 75,
+    title: 'Optimalkan Pencahayaan',
+    description: 'Gunakan cahaya alami atau lampu putih untuk hasil foto yang lebih menarik.',
+    confidence: 80,
     actionable: true,
     photoSpecific: true
   });
 
-  insights.push({
-    id: 'background-tip',
-    type: 'suggestion',
-    category: 'composition',
-    title: 'Tips Background',
-    description: 'Background yang bersih dan polos akan membuat produk lebih menonjol.',
-    confidence: 75,
-    actionable: true,
-    photoSpecific: true
-  });
-
-  return insights;
+  return baseInsights.slice(0, 3); // Ensure max 3 insights
 };
 
 export function AIInsights({ images, productName, description, onInsightClick }: AIInsightsProps) {
   const [insights, setInsights] = useState<AIInsight[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isVisible, setIsVisible] = useState(false);
+  const [hasAnalyzed, setHasAnalyzed] = useState(false);
+  const [qualityScore, setQualityScore] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (images.length > 0) {
-      setIsAnalyzing(true);
-      setIsVisible(true);
+  // Don't auto-analyze - wait for user to click
+  const handleAnalyzePhotos = async () => {
+    if (images.length === 0) return;
+    
+    setIsAnalyzing(true);
+    try {
+      const analysisResult = await analyzeImagesForInsights(images, productName);
+      setInsights(analysisResult);
+      setHasAnalyzed(true);
       
-      analyzeImages(images, productName).then(results => {
-        setInsights(results);
-        setIsAnalyzing(false);
-      });
-    } else {
-      setInsights([]);
-      setIsVisible(false);
+      // Set a simulated quality score based on insights
+      const avgConfidence = analysisResult.reduce((sum, insight) => sum + insight.confidence, 0) / analysisResult.length;
+      setQualityScore(Math.round(avgConfidence));
+    } catch (error) {
+      console.error('Analysis failed:', error);
+      setInsights(getFallbackInsights(images, productName));
+      setQualityScore(75);
+      setHasAnalyzed(true);
+    } finally {
+      setIsAnalyzing(false);
     }
-  }, [images, productName]);
+  };
 
   const getInsightIcon = (type: AIInsight['type']) => {
     switch (type) {
       case 'success': return CheckCircle;
-      case 'warning': return AlertTriangle;
+      case 'warning': return AlertCircle;
       case 'info': return Info;
-      case 'suggestion': return TrendingUp;
+      case 'suggestion': return Lightbulb;
       default: return Info;
     }
   };
 
   const getCategoryIcon = (category: AIInsight['category']) => {
     switch (category) {
-      case 'quality': return Star;
-      case 'visibility': return Eye;
-      case 'appeal': return Target;
-      case 'optimization': return TrendingUp;
-      case 'composition': return Layers;
       case 'lighting': return Sun;
-      default: return Sparkles;
+      case 'composition': return Camera;
+      case 'appeal': return TrendingUp;
+      case 'visibility': return Eye;
+      case 'optimization': return Zap;
+      default: return Palette;
     }
   };
 
   const getTypeColor = (type: AIInsight['type']) => {
     switch (type) {
-      case 'success': return 'text-success';
-      case 'warning': return 'text-warning';
-      case 'info': return 'text-info';
-      case 'suggestion': return 'text-primary';
-      default: return 'text-text-secondary';
+      case 'success': return 'text-green-600';
+      case 'warning': return 'text-amber-600';
+      case 'info': return 'text-blue-600';
+      case 'suggestion': return 'text-purple-600';
+      default: return 'text-gray-600';
     }
   };
 
   const getTypeBgColor = (type: AIInsight['type']) => {
     switch (type) {
-      case 'success': return 'bg-success/10 border-success/20';
-      case 'warning': return 'bg-warning/10 border-warning/20';
-      case 'info': return 'bg-info/10 border-info/20';
-      case 'suggestion': return 'bg-primary/10 border-primary/20';
-      default: return 'bg-surface border-border';
+      case 'success': return 'bg-green-50 border-green-200';
+      case 'warning': return 'bg-amber-50 border-amber-200';
+      case 'info': return 'bg-blue-50 border-blue-200';
+      case 'suggestion': return 'bg-purple-50 border-purple-200';
+      default: return 'bg-gray-50 border-gray-200';
     }
   };
 
-  if (!isVisible) {
-    return null;
+  if (images.length === 0) {
+    return (
+      <div className="bg-gray-50 rounded-lg p-6 text-center">
+        <Camera className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+        <p className="text-gray-500">Upload foto untuk mendapatkan analisis AI</p>
+      </div>
+    );
   }
 
-  const photoSpecificInsights = insights.filter(i => i.photoSpecific);
-  const generalInsights = insights.filter(i => !i.photoSpecific);
-
   return (
-    <div className="bg-surface rounded-card shadow-card p-4u space-y-4u">
-      {/* Header */}
-      <div className="flex items-center gap-2u">
-        <div className="flex items-center gap-2u">
-          <Sparkles className={cn(
-            'h-5 w-5 text-primary',
-            isAnalyzing && 'animate-pulse'
-          )} />
-          <h3 className="text-heading-2 font-semibold text-primary">
-            AI Photo Analysis
-          </h3>
+    <div className="space-y-4">
+      {/* Header with analyze button */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <Camera className="h-5 w-5 text-blue-600" />
+          <h3 className="text-lg font-semibold text-gray-900">AI Photo Analysis</h3>
+          {qualityScore && (
+            <div className="flex items-center space-x-1 text-sm text-gray-600">
+              <span>•</span>
+              <span>Skor: {qualityScore}/100</span>
+            </div>
+          )}
         </div>
         
-        {isAnalyzing && (
-          <div className="flex items-center gap-2u text-sm text-text-secondary">
-            <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-            Menganalisis foto...
-          </div>
+        {!hasAnalyzed && (
+          <button
+            onClick={handleAnalyzePhotos}
+            disabled={isAnalyzing || images.length === 0}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+          >
+            {isAnalyzing ? (
+              <>
+                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                <span>Menganalisis...</span>
+              </>
+            ) : (
+              <>
+                <Zap className="h-4 w-4" />
+                <span>Analisis Foto</span>
+              </>
+            )}
+          </button>
         )}
       </div>
 
-      {/* Loading State */}
-      {isAnalyzing && (
-        <div className="space-y-3u">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="animate-pulse">
-              <div className="flex items-start gap-3u p-3u bg-surface-secondary rounded-button">
-                <div className="w-5 h-5 bg-border rounded"></div>
-                <div className="flex-1 space-y-2u">
-                  <div className="h-4 bg-border rounded w-3/4"></div>
-                  <div className="h-3 bg-border rounded w-full"></div>
-                </div>
-                <div className="w-8 h-4 bg-border rounded"></div>
-              </div>
-            </div>
-          ))}
-        </div>
+      {/* Description */}
+      {!hasAnalyzed && (
+        <p className="text-sm text-gray-600">
+          Klik tombol untuk menganalisis kualitas foto dan mendapatkan saran perbaikan.
+        </p>
       )}
 
-      {/* Insights List */}
-      {!isAnalyzing && insights.length > 0 && (
-        <div className="space-y-3u">
-          {insights.map((insight) => {
-            const Icon = getInsightIcon(insight.type);
+      {/* Analysis Results */}
+      {hasAnalyzed && (
+        <div className="space-y-3">
+          {qualityScore && (
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 border border-blue-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-medium text-gray-900">Kualitas Foto Keseluruhan</span>
+                <span className="text-lg font-bold text-blue-600">{qualityScore}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div 
+                  className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${qualityScore}%` }}
+                ></div>
+              </div>
+            </div>
+          )}
+
+          {insights.map((insight, index) => {
+            const IconComponent = getInsightIcon(insight.type);
             const CategoryIcon = getCategoryIcon(insight.category);
             
             return (
               <div
                 key={insight.id}
-                className={cn(
-                  'border rounded-button p-3u transition-colors cursor-pointer hover:shadow-sm',
-                  getTypeBgColor(insight.type),
-                  insight.actionable && 'hover:border-primary/40'
-                )}
-                onClick={() => insight.actionable && onInsightClick?.(insight)}
+                className={`p-4 rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-md ${getTypeBgColor(insight.type)}`}
+                onClick={() => onInsightClick?.(insight)}
               >
-                <div className="flex items-start gap-3u">
-                  {/* Icon */}
-                  <div className={cn(
-                    'flex items-center justify-center w-8 h-8 rounded-full',
-                    insight.type === 'success' && 'bg-success/20',
-                    insight.type === 'warning' && 'bg-warning/20',
-                    insight.type === 'info' && 'bg-info/20',
-                    insight.type === 'suggestion' && 'bg-primary/20'
-                  )}>
-                    <Icon className={cn('w-4 h-4', getTypeColor(insight.type))} />
+                <div className="flex items-start space-x-3">
+                  <div className={`p-2 rounded-full ${insight.type === 'success' ? 'bg-green-100' : insight.type === 'warning' ? 'bg-amber-100' : insight.type === 'info' ? 'bg-blue-100' : 'bg-purple-100'}`}>
+                    <IconComponent className={`h-4 w-4 ${getTypeColor(insight.type)}`} />
                   </div>
-
-                  {/* Content */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2u mb-1u">
-                      <CategoryIcon className="w-4 h-4 text-text-secondary" />
-                      <h4 className="text-sm font-medium text-text-primary">
-                        {insight.title}
-                      </h4>
-                      {insight.photoSpecific && (
-                        <span className="px-2 py-0.5 text-xs bg-primary/10 text-primary rounded-full">
-                          Photo AI
-                        </span>
-                      )}
+                    <div className="flex items-center space-x-2 mb-1">
+                      <CategoryIcon className="h-3 w-3 text-gray-500" />
+                      <h4 className="font-medium text-gray-900 text-sm">{insight.title}</h4>
+                      <div className="flex items-center space-x-1 text-xs text-gray-500">
+                        <span>{insight.confidence}%</span>
+                      </div>
                     </div>
-                    <p className="text-sm text-text-secondary">
-                      {insight.description}
-                    </p>
-                    
+                    <p className="text-gray-600 text-sm leading-relaxed">{insight.description}</p>
                     {insight.actionable && (
-                      <div className="mt-2u">
-                        <span className="text-xs text-primary font-medium">
-                          Klik untuk melihat saran →
-                        </span>
+                      <div className="mt-2">
+                        <span className="text-xs text-blue-600 font-medium">Klik untuk melihat saran →</span>
                       </div>
                     )}
-                  </div>
-
-                  {/* Confidence */}
-                  <div className="flex items-center gap-1u">
-                    <div className="text-xs text-text-secondary">
-                      {insight.confidence}%
-                    </div>
                   </div>
                 </div>
               </div>
             );
           })}
-        </div>
-      )}
 
-      {/* Empty State */}
-      {!isAnalyzing && insights.length === 0 && images.length > 0 && (
-        <div className="text-center py-6u">
-          <Camera className="w-8 h-8 text-text-secondary mx-auto mb-2u" />
-          <p className="text-sm text-text-secondary">
-            Tidak ada insight yang tersedia untuk saat ini
-          </p>
-        </div>
-      )}
-
-      {/* Summary Stats */}
-      {!isAnalyzing && insights.length > 0 && (
-        <div className="border-t border-border pt-3u">
-          <div className="flex items-center justify-between text-xs text-text-secondary">
-            <div className="flex items-center gap-4u">
+          {/* Summary */}
+          <div className="bg-gray-50 rounded-lg p-4 text-center">
+            <div className="flex items-center justify-center space-x-4 text-sm text-gray-600">
               <span>{insights.length} insight ditemukan</span>
+              <span>•</span>
               <span>{insights.filter(i => i.actionable).length} dapat ditindaklanjuti</span>
-              {photoSpecificInsights.length > 0 && (
-                <span className="text-primary">{photoSpecificInsights.length} analisis foto</span>
-              )}
-            </div>
-            <div className="flex items-center gap-1u">
-              <Sparkles className="w-3 h-3" />
-              <span>AI Analysis</span>
+              <span>•</span>
+              <span>{images.length} analisis foto</span>
             </div>
           </div>
+
+          {/* Re-analyze button */}
+          <button
+            onClick={() => {
+              setHasAnalyzed(false);
+              setInsights([]);
+              setQualityScore(null);
+            }}
+            className="w-full py-2 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors text-sm"
+          >
+            Analisis Ulang
+          </button>
         </div>
       )}
     </div>

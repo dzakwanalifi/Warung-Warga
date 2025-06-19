@@ -192,8 +192,8 @@ export const BottomNavBar = memo(() => {
         </div>
       </div>
       
-      <nav className="fixed bottom-0 left-0 right-0 bg-surface border-t border-border z-30">
-        <div className="grid grid-cols-5 h-16">
+      <nav className="fixed bottom-0 left-0 right-0 bg-surface border-t border-border z-30 shadow-lg">
+        <div className="grid grid-cols-5 h-16 px-2">
           {navItems.map((item) => {
             const active = isActive(item.href);
             
@@ -203,10 +203,10 @@ export const BottomNavBar = memo(() => {
                 <button
                   key={item.label}
                   onClick={toggleJualMenu}
-                  className="flex flex-col items-center justify-center p-2u transition-all duration-200 hover:bg-surface-secondary"
+                  className="flex flex-col items-center justify-center p-2 transition-all duration-200 hover:bg-surface-secondary"
                 >
                   {isJualMenuOpen ? item.activeIcon : item.icon}
-                  <span className="text-xs font-medium text-primary mt-1u">
+                  <span className="text-xs font-medium text-primary mt-1">
                     {item.label}
                   </span>
                 </button>
@@ -219,7 +219,7 @@ export const BottomNavBar = memo(() => {
                 href={item.href}
                 onClick={closeJualMenu}
                 className={`
-                  flex flex-col items-center justify-center p-2u
+                  flex flex-col items-center justify-center p-2
                   transition-all duration-200 hover:bg-surface-secondary
                   ${active ? 'text-primary' : 'text-text-secondary'}
                 `}
@@ -233,7 +233,7 @@ export const BottomNavBar = memo(() => {
                   )}
                 </div>
                 <span className={`
-                  text-xs font-medium mt-1u
+                  text-xs font-medium mt-1
                   ${active ? 'text-primary' : 'text-text-secondary'}
                 `}>
                   {item.label}
@@ -243,8 +243,8 @@ export const BottomNavBar = memo(() => {
           })}
         </div>
         
-        {/* Safe area for devices with home indicator */}
-        <div className="h-safe-area-inset-bottom bg-surface" />
+        {/* Enhanced safe area for devices with home indicator */}
+        <div className="h-safe-area-inset-bottom bg-surface min-h-[env(safe-area-inset-bottom)] pb-1" />
       </nav>
     </>
   );

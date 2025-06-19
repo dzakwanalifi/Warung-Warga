@@ -155,6 +155,48 @@ Mengikuti prinsip:
 - **Development Checklist**: Lihat `WARUNG_WARGA_MVP_DEVELOPMENT_CHECKLIST.md`
 - **Backend API**: https://warungwarga-api.azurewebsites.net/docs
 
+## Troubleshooting
+
+### Issue: Newly created lapaks not appearing in "Lapak Terdekat" section
+
+**Root Cause**: Missing location coordinates during lapak creation.
+
+**Solution Implemented**:
+1. **Location Capture**: Frontend now captures user's GPS coordinates when creating lapaks
+2. **Coordinate Inclusion**: Latitude/longitude are included in the lapak creation payload
+3. **Backend Update**: Backend modified to accept and use coordinates from frontend
+4. **Auto-Refresh**: Homepage automatically refreshes nearby lapaks after creation
+5. **Manual Refresh**: Added refresh button for nearby lapaks section
+
+**Backend Changes**: 
+- Modified `/lapak` POST endpoint to accept optional `latitude` and `longitude` form fields
+- Updated logic to prioritize frontend coordinates over seller profile location
+- Enhanced location validation and error messaging
+
+**Debug Logs to Check**:
+```
+🚀 Calling API: POST /lapak {lapakData: {...}, imageCount: 1, hasLocation: true, coordinates: {...}}
+📝 FormData: latitude = -6.3990337
+📝 FormData: longitude = 106.8207875
+📍 Using frontend coordinates: lat=-6.3990337, lon=106.8207875
+✅ Lapak created with ID: 162d17ef-6abe-4c8e-8a7f-e4c85343fbcd
+```
+
+**User Flow**:
+1. User visits `/lapak/buat` (lapak creation page)
+2. Browser requests location permission
+3. User uploads photos and fills product details
+4. Frontend captures GPS coordinates automatically
+5. On form submission, coordinates are included in the request
+6. Backend creates lapak with specific coordinates (not profile location)
+7. User is redirected to homepage with `?refresh=lapak` parameter
+8. Homepage automatically refreshes nearby lapaks to show the new listing
+
+**Dependencies**:
+- Browser Geolocation API support
+- Backend handling of latitude/longitude fields in POST /lapak
+- PostGIS/GeoAlchemy2 for spatial queries
+
 ---
 
 **🇮🇩 Built with ❤️ for Indonesian Local Communities** 

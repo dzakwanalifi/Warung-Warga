@@ -2,15 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { User } from 'lucide-react';
 import { SkeletonGrid } from '@/components/SkeletonCard';
 import { OverallStatsCard } from '@/components/OverallStatsCard';
 import { GroupBuyCard } from '@/components/GroupBuyCard';
 import { getBoronganList, calculateBoronganStats, getMockBoronganStats, BoronganItem, BoronganStats } from '@/lib/boronganService';
+import { useAuthStore } from '@/hooks/useAuthStore';
 
 export default function BoronganPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [boronganList, setBoronganList] = useState<BoronganItem[]>([]);
   const [stats, setStats] = useState<BoronganStats>(getMockBoronganStats());
+  const { isAuthenticated } = useAuthStore();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -50,6 +53,15 @@ export default function BoronganPage() {
                 Belanja bareng tetangga, hemat bersama
               </p>
             </div>
+            {/* Navigation to Borongan Saya */}
+            {isAuthenticated && (
+              <Link href="/borongan/saya" prefetch={true}>
+                <button className="flex items-center gap-2u px-3u py-2u bg-surface-secondary text-text-primary rounded-button text-label transition-all duration-200 hover:bg-border border border-border">
+                  <User className="w-4 h-4" />
+                  Borongan Saya
+                </button>
+              </Link>
+            )}
           </div>
         </div>
       </header>

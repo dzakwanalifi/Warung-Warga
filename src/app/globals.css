@@ -18,6 +18,8 @@
     min-height: 100vh;
     /* Optimize scrolling on mobile */
     -webkit-overflow-scrolling: touch;
+    /* Support for safe areas */
+    padding-bottom: env(safe-area-inset-bottom);
   }
 
   /* Improve image loading */
@@ -41,6 +43,21 @@
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
+  }
+}
+
+/* Safe area utilities for better device support */
+@layer utilities {
+  .h-safe-area-inset-bottom {
+    height: env(safe-area-inset-bottom, 0px);
+  }
+  
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  
+  .mb-safe {
+    margin-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
 
